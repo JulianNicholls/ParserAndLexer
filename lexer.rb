@@ -1,202 +1,137 @@
+class LexerError < Exception
+end
+
 class Lexer
-
-    STRING      = 1
-    INTEGER     = 2
-    IDENT       = 3
-    OPERATOR    = 4
-    CHAR        = 5
-    FLOAT       = 6
+ 
+  RESERVED = %w{PRINT LET IF THEN FOR TO STEP NEXT END STOP REM}
+  
+  PATTERNS = {
+    /\A'/           => :collect_string,
+    /\A"/           => :collect_string,
+    /\A[\d\.]+/     => :collect_number,   # Must precede ident, \w includes \d
+    /\A\w+/         => :collect_ident,
+    /\A==?/         => :collect_equals,
+    /\A[!<>]=?/     => :collect_compare,
+    /\A[\+\-\*\/%]/ => :collect_operator,
+    /\A\r?\n\r?/    => :collect_eol,
+    /\A[\(\)]/      => :collect_bracket,
+    /\A[\[\]]/      => :collect_sqbracket,
+    /\A:/           => :collect_colon
+  }
+  
+  def initialize string = nil, opts = {}
+    @reserved = opts[:reserved] || RESERVED
+    from string
+  end
+  
+  def from string
+    @str = string
+  end
+  
+  def next
+    raise LexerError.new( "No string specified" ) if @str.nil?
     
-    BROPEN      = 8
-    BRCLOSE     = 9
-    EOL         = 10
-    ASSIGN      = 11
-
-    CMP_EQUAL   = 20
-    CMP_LT      = 21
-    CMP_LTE     = 22    # Must be CMP_LT+1
-    CMP_GT      = 23
-    CMP_GTE     = 24    # Must be CMP_GT+1
-    CMP_NE      = 25
-    
-    LET         = 64          
-    IF          = 65
-    THEN        = 66
-    FOR         = 67
-    TO          = 68
-    STEP        = 69
-    NEXT        = 70
-    PRINT       = 71
-    
-    EOS         = 99
-    INVALID     = 128         # Or'ed in to indicate invalidity
-    TOKEN_MASK  = 127         # Mask to remove INVALID
-    
-    RESERVED = {
-      'PRINT'  => PRINT,
-      'LET'    => LET,
-      'IF'     => IF,
-      'THEN'   => THEN,
-      'FOR'    => FOR,
-      'TO'     => TO,
-      'STEP'   => STEP,
-      'NEXT'   => NEXT
-    }
-    
-    def initialize string = nil
-      from string unless string.nil?
-    end
-    
-    def from string
-      @str    = string
-      @cur    = 0
-      @length = string.length
-    end
-    
-    def next
-      return { :token => EOS } if skip_space == :eos
-      
-      case @str[@cur]
-        when "'", '"'
-          return collect_string
-          
-        when 'A'..'Z', 'a'..'z', '_'
-          return collect_ident
-          
-        when '0'..'9'
-          return collect_number
-
-        when '='
-          return process_equal_sign
-
-        when '!', '>', '<'
-          return process_compare
-          
-        when '+', '-', '*', '/', '%'
-          @cur += 1
-          return { :token => OPERATOR, :value => @str[@cur-1] }
-          
-        when "\n", "\r"
-          while @str[@cur] == "\n" || @str[@cur] == "\r"
-            @cur += 1
-          end
-          return { :token => EOL }
-          
-        when '('
-          @cur += 1
-          return { :token => BROPEN  }
-
-        when ')'
-          @cur += 1
-          return { :token => BRCLOSE  }
-          
-        else
-          @cur += 1
-          return { :token => CHAR, :value => @str[@cur-1] }
-      end
-    end
-
-private
-
-    def collect_number
-      start_i = @cur
-      type    = INTEGER
-      ch      = @str[@cur]
-      
-      while !eos? && ((('0'..'9').include? ch) || ch == '.')
-        type = FLOAT if ch == '.'
-        @cur += 1
-        ch   = @str[@cur]
-      end
-      
-      str   = @str[start_i..@cur-1]
-      value = (type == FLOAT) ? str.to_f : str.to_i
-      
-      { :token => type, :value => value }
-    end
-    
-    def collect_string
-      start_c = @str[@cur]
-      end_i   = @str.index( start_c, @cur+1 )
-      
-      if end_i.nil?
-        @cur = @length
-        { :token => STRING | INVALID, :value => @str[(@cur+1)..@length-1] }
-      else
-        @cur    = end_i + 1
-        { :token => STRING, :value => @str[(@cur+1)..(end_i-1)] }
-      end
-    end
-    
-    def collect_ident
-      start_i = @cur
-      ch      = @str[@cur]
-      
-      while !eos? && (/\w|\d|_/.match ch)
-        @cur += 1
-        ch   = @str[@cur]
-      end
-
-      value = @str[start_i..@cur-1]
-      
-      if RESERVED[value].nil?
-        { :token => IDENT, :value => value }
-      else
-        { :token => RESERVED[value] }
-      end
-    end
-
-    def process_equal_sign
-      if @str[@cur+1] == '='  # Compare
-        @cur += 2
-        { :token => CMP_EQUAL }
-      else
-        @cur += 1
-        { :token => ASSIGN }
-      end
-    end
-    
-    def process_compare
-      ch  = @str[@cur]
-      ch1 = @str[@cur+1]
-      
-      ret = { :token => CMP_GT } if ch == '>'
-      ret = { :token => CMP_LT } if ch == '<'
-      ret = { :token => CMP_NE } if ch == '!'
-      
-      if ret[:token] == CMP_LT || ret[:token] == CMP_GT
-        if ch1 == '='
-          ret[:token] += 1
-          @cur += 1
-        end
-      elsif ret[:token] == CMP_NE
-        if ch1 == '='
-          @cur += 1
-        else
-          ret[:token] |= INVALID
+    if skip_space != :eos
+      PATTERNS.each do |re, func|
+        re.match( @str ) do |mat|
+          @str.slice! re
+          return self.send( func, mat )
         end
       end
       
-      @cur += 1
+      ret  = { :token => :failed, :value => @str }
+      @str = ''
       return ret
     end
     
-    def skip_space
-      while !eos? && (" \t".include? @str[@cur])
-        @cur += 1
-      end
-      
-      eos? ? :eos : :ok
-    end
+    { :token => :eos }
+  end
+
+private
+
+  def collect_colon mat           # Simple :
+    { :token => :colon }
+  end
   
-    def eos?
-      @cur >= @length
+  
+  def collect_eol mat             # End of Line
+    { :token => :eol }
+  end
+  
+  
+  def collect_compare mat         # Comparison operator
+    { :token => :comparison, :value => mat.to_s }
+  end
+
+  
+  def collect_operator mat        # Arithmetic operator
+    { :token => :operator, :value => mat.to_s }
+  end
+
+  
+  def collect_equals mat          # Assignment or comparison
+    { :token => (mat.to_s == '=') ? :assign : :cmp_equal }
+  end
+
+
+  def collect_bracket mat         # Normal Bracket
+    { :token => (mat.to_s == '(') ? :br_open : :br_close }
+  end
+
+
+  def collect_sqbracket mat       # Square bracket
+    { :token => (mat.to_s == '[') ? :sqbr_open : :sqbr_close }
+  end
+  
+  
+  def collect_number mat          # Number, either integer or float
+    str = mat.to_s
+    { :token => :float, :value => (str.include? '.') ? str.to_f : str.to_i }
+  end
+  
+  
+  def collect_ident mat           # Identifier or reserved word
+    str = mat.to_s
+    if @reserved.include? str
+      { :token => str.upcase.to_sym }
+    else
+      { :token => :ident, :value => str }
     end
+  end
+
+  
+  def collect_string mat          # String delimited by ' or "
+    re   = Regexp.new "([^#{mat.to_s}]+)#{mat.to_s}"
+    mat2 = re.match( @str )
+    
+    if mat2.nil?   # Unterminated string
+      ret  =  { :token => :string, :value => @str, :invalid => true }
+      @str = ''
+    else
+      ret  =  { :token => :string, :value => mat2[1] }
+      @str.slice! re
+    end
+    
+    return ret
+  end
+
+
+  def skip_space                  # Skip spaces and tabs (not CR or LF)
+    @str.slice!( /\A[ \t]/ );   # Not \s, because we want to capture EOL
+    eos? ? :eos : :ok
+  end
+  
+
+  def eos?                        # Are we done with this string?
+    @str.empty?
+  end
 end
 
+
+if $0 == __FILE__
 def render_loop lex
   cur = lex.next
-  while cur[:token] != Lexer::EOS
+  while cur[:token] != :eos
     render cur
     cur = lex.next
   end
@@ -206,28 +141,36 @@ end
 
 
 def render this
-  print "  [#{this[:token] & Lexer::TOKEN_MASK}: #{this[:value]}#{' *** INVALID ***' if (this[:token] & Lexer::INVALID) != 0}]"
+  print "  [#{this[:token]}: #{this[:value]}#{' *** INVALID ***' if this[:invalid]}]"
 end
 
 
-if $0 == __FILE__
   tests = [
+    'LET str3="valid words"',
     "varname = 12 + 25 / 89.1",
     "second=varname",
-    "second==varname\n(2+3)",
-    "'invalid",
-    'str3 = "invalid',
+    'str3 = "unterminated',
     'PRINT A3',
-    'LET str3="valid"',
-    'FOR I = 1 TO 10',
-    'FOR I = 1 TO 10 STEP 3',    
-    'i == j < k <= l > m >= n != o'
+    'FOR I = 1 TO 10 STEP 3',
+    'IF A3 > 1 THEN',
+    'NEXT A3',
+    'A[3] = 47',
+    'j < k <= m >= n != o',
+    "second==varname\n(2+3)",
   ]
   
   lex = Lexer.new
   
+  # Try to provoke an exception
+  
+  begin
+    fail = lex.next
+  rescue LexerError => lexex
+    puts "Expected exception: #{lexex}"
+  end
+  
   tests.each do |t| 
-    puts "|#{t}|"
+    puts "\n|#{t}|"
     lex.from t
     render_loop lex
   end
