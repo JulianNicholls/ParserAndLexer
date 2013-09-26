@@ -3,11 +3,10 @@ end
 
 class Lexer
  
-  RESERVED = %w{PRINT LET IF THEN FOR TO STEP NEXT END STOP REM}
+  RESERVED = %w{PRINT INPUT LET IF THEN FOR TO STEP NEXT END STOP REM}
   
   PATTERNS = {
-    /\A'/           => :collect_string,
-    /\A"/           => :collect_string,
+    /\A['"]/        => :collect_string,
     /\A[\d\.]+/     => :collect_number,   # Must precede ident, \w includes \d
     /\A\w+/         => :collect_ident,
     /\A==?/         => :collect_equals,
@@ -16,16 +15,17 @@ class Lexer
     /\A\r?\n\r?/    => :collect_eol,
     /\A[\(\)]/      => :collect_bracket,
     /\A[\[\]]/      => :collect_sqbracket,
-    /\A:/           => :collect_colon
+    /\A:/           => :collect_colon,
+    /,;/            => :collect_separator
   }
   
-  def initialize string = nil, opts = {}
+  def initialize opts = {}
     @reserved = opts[:reserved] || RESERVED
-    from string
   end
   
   def from string
-    @str = string
+    @str = String.new string
+    self              # Allow chaining
   end
   
   def next
@@ -64,8 +64,20 @@ private
   end
 
   
-  def collect_operator mat        # Arithmetic operator
+  def collect_operator mat        # Arithmetic operator, or negative value
+    if mat.to_s == '-' && (/\d/.match( peek ) )
+      re = /[\d\.]+/
+      mat2 = re.match @str
+      @str.slice! re
+      return collect_number '-' + mat2.to_s
+    end
+    
     { :token => :operator, :value => mat.to_s }
+  end
+
+  
+  def collect_separator mat        # PRINT separator, ; or ,
+    { :token => :separator, :value => mat.to_s }
   end
 
   
@@ -85,8 +97,9 @@ private
   
   
   def collect_number mat          # Number, either integer or float
-    str = mat.to_s
-    { :token => :float, :value => (str.include? '.') ? str.to_f : str.to_i }
+    str  = mat.to_s
+    is_f = str.include? '.'
+    { :token => is_f ? :float : :integer, :value => is_f ? str.to_f : str.to_i }
   end
   
   
@@ -121,6 +134,9 @@ private
     eos? ? :eos : :ok
   end
   
+  def peek
+    @str[0]
+  end
 
   def eos?                        # Are we done with this string?
     @str.empty?
@@ -155,6 +171,7 @@ end
     'IF A3 > 1 THEN',
     'NEXT A3',
     'A[3] = 47',
+    'A10 = -47',
     'j < k <= m >= n != o',
     "second==varname\n(2+3)",
   ]
