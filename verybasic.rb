@@ -11,7 +11,7 @@ class Parser
   
   def initialize opts = {}
     @line      = nil
-    @variables = Hash.new( 0 )    # Variables blink into existence = 0
+    @variables = Hash.new( 0 )    # Unknown variables = 0
     @lexer     = opts[:lexer] || Lexer.new
   end
   
@@ -67,10 +67,35 @@ private
   end
   
   
+  def do_print
+    last = nil
+    item = expect [:string, :float, :integer, :ident, :separator, :eos]
+    
+    loop do
+      case item[:token]
+        when :eos then break;
+        
+        when :string, :float, :integer
+          print item[:value]
+          
+        when :ident
+          print value_of item[:value]
+          
+        when :separator
+          print "\t" if item[:value] == ','
+      end
+      
+      last = item
+      item = expect [:string, :float, :integer, :ident, :separator, :eos]
+    end
+    
+    puts unless last == { :token => :separator, :value => ';' }
+  end
+  
   def expect options
     this = @lexer.next
 #    puts "expect( #{options.inspect} ) - #{this}"
-    raise ParserError.new( "Unxexpected <#{this[:token]}> in #@line." ) unless options.include? this[:token]
+    raise ParserError.new( "Unxexpected <#{this}> in #@line." ) unless options.include? this[:token]
     
     this
   end
@@ -88,12 +113,16 @@ if __FILE__ == $0
 
   begin
     p.line_do "LET A1 = 1"
-    p.line_do "A2 = 2"
-    p.line_do "A3 = 3"
-    p.line_do "A4 = 4"
     p.line_do "A5 = 5"
     p.line_do "A6 = 6"
-    p.line_do "A7 = A8"   # Test magic creation
+    p.line_do "A7 = A8"   # Test default value
+    p.line_do "PRINT \"String 1\""
+    p.line_do "PRINT 'String 2'"
+    p.line_do "PRINT A1, A5"
+    p.line_do "PRINT A1; A6"
+    p.line_do "PRINT 'A1 = ';A1, 'A2 = ';A6"
+    p.line_do "PRINT 'This should all be ';"
+    p.line_do "PRINT 'on the same line'"
   rescue ParserError => e
     puts "SYNTAX ERROR: #{e}"
   end

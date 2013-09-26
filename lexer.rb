@@ -16,7 +16,7 @@ class Lexer
     /\A[\(\)]/      => :collect_bracket,
     /\A[\[\]]/      => :collect_sqbracket,
     /\A:/           => :collect_colon,
-    /,;/            => :collect_separator
+    /\A[,;]/          => :collect_separator
   }
   
   def initialize opts = {}
@@ -64,19 +64,7 @@ private
   end
 
   
-  def collect_operator mat        # Arithmetic operator, or negative value
-    if mat.to_s == '-' && (/\d/.match( peek ) )
-      re = /[\d\.]+/
-      mat2 = re.match @str
-      @str.slice! re
-      return collect_number '-' + mat2.to_s
-    end
-    
-    { :token => :operator, :value => mat.to_s }
-  end
-
-  
-  def collect_separator mat        # PRINT separator, ; or ,
+  def collect_separator mat        # PRINT separator: ; or ,
     { :token => :separator, :value => mat.to_s }
   end
 
@@ -95,6 +83,18 @@ private
     { :token => (mat.to_s == '[') ? :sqbr_open : :sqbr_close }
   end
   
+  
+  def collect_operator mat        # Arithmetic operator, or negative value
+    if mat.to_s == '-' && (/\d/.match( peek ) )
+      re = /[\d\.]+/
+      mat2 = re.match @str
+      @str.slice! re
+      return collect_number '-' + mat2.to_s
+    end
+    
+    { :token => :operator, :value => mat.to_s }
+  end
+
   
   def collect_number mat          # Number, either integer or float
     str  = mat.to_s
