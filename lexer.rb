@@ -1,32 +1,43 @@
+#----------------------------------------------------------------------------
+# Exception thrown when the input is missing
+#----------------------------------------------------------------------------
+
 class LexerError < Exception
 end
+
+
+#----------------------------------------------------------------------------
+# Lexer capable of collecting the salient parts of BASIC
+#----------------------------------------------------------------------------
 
 class Lexer
  
   RESERVED = %w{PRINT INPUT LET IF THEN FOR TO STEP NEXT END STOP REM}
   
   PATTERNS = {
-    /\A['"]/        => :collect_string,
-    /\A[\d\.]+/     => :collect_number,   # Must precede ident, \w includes \d
-    /\A\w+/         => :collect_ident,
-    /\A==?/         => :collect_equals,
-    /\A[!<>]=?/     => :collect_compare,
-    /\A[\+\-\*\/%]/ => :collect_operator,
-    /\A\r?\n\r?/    => :collect_eol,
-    /\A[\(\)]/      => :collect_bracket,
-    /\A[\[\]]/      => :collect_sqbracket,
-    /\A:/           => :collect_colon,
+    /\A['"]/          => :collect_string,
+    /\A[\d\.]+/       => :collect_number,   # Must precede ident, \w includes \d
+    /\A\w+/           => :collect_ident,
+    /\A==?/           => :collect_equals,
+    /\A[!<>]=?/       => :collect_compare,
+    /\A[\+\-\*\/%]/   => :collect_operator,
+    /\A[\r\n][\n\r]*/ => :collect_eol,
+    /\A[\(\)]/        => :collect_bracket,
+    /\A[\[\]]/        => :collect_sqbracket,
+    /\A:/             => :collect_colon,
     /\A[,;]/          => :collect_separator
   }
   
   def initialize opts = {}
     @reserved = opts[:reserved] || RESERVED
   end
+
   
   def from string
     @str = String.new string
     self              # Allow chaining
   end
+
   
   def next
     raise LexerError.new( "No string specified" ) if @str.nil?
@@ -99,6 +110,11 @@ private
   def collect_number mat          # Number, either integer or float
     str  = mat.to_s
     is_f = str.include? '.'
+
+    # Thrpw a fit if there's more than one decimal point
+    
+    raise LexerError.new( "Invalid number encountered: #{str}" ) if /.*\..*\./.match str
+
     { :token => is_f ? :float : :integer, :value => is_f ? str.to_f : str.to_i }
   end
   
@@ -117,15 +133,11 @@ private
     re   = Regexp.new "([^#{mat.to_s}]+)#{mat.to_s}"
     mat2 = re.match( @str )
     
-    if mat2.nil?   # Unterminated string
-      ret  =  { :token => :string, :value => @str, :invalid => true }
-      @str = ''
-    else
-      ret  =  { :token => :string, :value => mat2[1] }
-      @str.slice! re
-    end
+    raise LexerError.new( "Unterminated string encountered: #{@str}" ) if mat2.nil?
+
+    @str.slice! re
     
-    return ret
+    return { :token => :string, :value => mat2[1] }
   end
 
 
