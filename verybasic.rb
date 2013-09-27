@@ -31,6 +31,9 @@ class Parser
       when :PRINT                   # Print
         do_print
         
+      when :INPUT                   # Input
+        do_input
+        
       else                          # Ignore the not understood for now
         do_ignore
     end
@@ -61,41 +64,58 @@ private
     targ = expect [:integer, :float, :ident, :string]
 
     val = targ[:value]
-    val = value_of( val ) if targ[:token] == :ident   # Another veriable
+    val = value_of( val ) if targ[:token] == :ident   # Another variable
     
     @variables[ident] = val
   end
   
   
   def do_print
-    last = nil
-    item = expect [:string, :float, :integer, :ident, :separator, :eos]
+    last, item = nil, nil
     
     loop do
-      case item[:token]
-        when :eos then break;
-        
-        when :string, :float, :integer
-          print item[:value]
-          
-        when :ident
-          print value_of item[:value]
-          
-        when :separator
-          print "\t" if item[:value] == ','
-      end
+      item = expect [:string, :float, :integer, :ident, :separator, :eos]
+
+      break if item[:token] == :eos
+      print_item item
       
       last = item
-      item = expect [:string, :float, :integer, :ident, :separator, :eos]
     end
     
-    puts unless last == { :token => :separator, :value => ';' }
+    puts unless last[:value] == ';' || last[:value] == ','
+  end
+  
+  
+  def do_input
+    item = nil
+    
+    loop do
+      item = expect [:string, :separator, :ident, :eos]
+      break if item[:token] == :ident
+      raise ParserError.new( "No variable specified for INPUT" ) if item[:token] == :eos
+      
+      print_item item
+    end
+      
+    print '? '
+    value = gets.chomp
+    @variables[item[:value]] = value
+  end
+
+
+  def print_item item
+    case item[:token]
+      when :string, :float, :integer  then print item[:value]
+      when :ident                     then print value_of item[:value]
+      when :separator                 then print "\t" if item[:value] == ','
+    end
   end
   
   def expect options
     this = @lexer.next
-#    puts "expect( #{options.inspect} ) - #{this}"
-    raise ParserError.new( "Unxexpected <#{this}> in #@line." ) unless options.include? this[:token]
+    
+    raise ParserError.new( "Unxexpected <#{this}> in #@line." ) \
+      unless options.include? this[:token]
     
     this
   end
@@ -115,14 +135,17 @@ if __FILE__ == $0
     p.line_do "LET A1 = 1"
     p.line_do "A5 = 5"
     p.line_do "A6 = 6"
+    p.line_do 'INPUT "Value for A9";A9'
     p.line_do "A7 = A8"   # Test default value
-    p.line_do "PRINT \"String 1\""
+    p.line_do 'PRINT "String 1"'
     p.line_do "PRINT 'String 2'"
     p.line_do "PRINT A1, A5"
     p.line_do "PRINT A1; A6"
-    p.line_do "PRINT 'A1 = ';A1, 'A2 = ';A6"
+    p.line_do "PRINT 'A1 = ';A1, 'A2 = ';A6, 'A9 = '; A9"
     p.line_do "PRINT 'This should all be ';"
     p.line_do "PRINT 'on the same line'"
+    p.line_do "PRINT 'This word',"
+    p.line_do "PRINT 'should have a tab after it'"
   rescue ParserError => e
     puts "SYNTAX ERROR: #{e}"
   end
