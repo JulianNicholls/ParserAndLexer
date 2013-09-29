@@ -45,6 +45,21 @@ class Parser
     ret + '>'
   end
   
+  def expression
+    value = term
+    
+  end
+  
+  
+  def term
+  
+  end
+  
+  
+  def factor
+  
+  end
+  
 private
 
   def do_ignore
@@ -82,7 +97,7 @@ private
       last = item
     end
     
-    puts unless last[:value] == ';' || last[:value] == ','
+    puts unless last && (last[:value] == ';' || last[:value] == ',')
   end
   
   
@@ -137,6 +152,7 @@ if __FILE__ == $0
     p.line_do "A6 = 6"
     p.line_do 'INPUT "Value for A9";A9'
     p.line_do "A7 = A8"   # Test default value
+    p.line_do 'PRINT'
     p.line_do 'PRINT "String 1"'
     p.line_do "PRINT 'String 2'"
     p.line_do "PRINT A1, A5"
