@@ -40,12 +40,20 @@ class Lexer
 
   
   def next
+    ret = peek_next
+    @str.slice! @last_re
+    
+    ret
+  end
+
+  
+  def peek_next
     raise LexerError.new( "No string specified" ) if @str.nil?
     
     if skip_space != :eos
       PATTERNS.each do |re, func|
         re.match( @str ) do |mat|
-          @str.slice! re
+          @last_re = re
           return self.send( func, mat )
         end
       end
@@ -57,7 +65,7 @@ class Lexer
     
     { :token => :eos }
   end
-
+  
 private
 
   def collect_colon mat           # Simple :
@@ -96,11 +104,11 @@ private
   
   
   def collect_operator mat        # Arithmetic operator, or negative value
-    if mat.to_s == '-' && (/\d/.match( peek ) )
-      re = /[\d\.]+/
+    if mat.to_s == '-' && (/\d/.match( peek ))
+      re = /\A-[\d\.]+/
       mat2 = re.match @str
-      @str.slice! re
-      return collect_number '-' + mat2.to_s
+      @last_re = re
+      return collect_number mat2.to_s
     end
     
     { :token => :operator, :value => mat.to_s }
@@ -111,7 +119,7 @@ private
     str  = mat.to_s
     is_f = str.include? '.'
 
-    # Thrpw a fit if there's more than one decimal point
+    # Throw a fit if there's more than one decimal point
     
     raise LexerError.new( "Invalid number encountered: #{str}" ) if /.*\..*\./.match str
 
@@ -122,7 +130,7 @@ private
   def collect_ident mat           # Identifier or reserved word
     str = mat.to_s
     if @reserved.include? str
-      { :token => str.upcase.to_sym }
+      { :token => str.to_sym }
     else
       { :token => :ident, :value => str }
     end
@@ -130,27 +138,28 @@ private
 
   
   def collect_string mat          # String delimited by ' or "
-    re   = Regexp.new "([^#{mat.to_s}]+)#{mat.to_s}"
+    del  = mat.to_s
+    re   = Regexp.new "#{del}([^#{del}]+)#{del}"
     mat2 = re.match( @str )
     
     raise LexerError.new( "Unterminated string encountered: #{@str}" ) if mat2.nil?
 
-    @str.slice! re
+    @last_re = re
     
     return { :token => :string, :value => mat2[1] }
   end
 
 
-  def skip_space                  # Skip spaces and tabs (not CR or LF)
+  def skip_space                # Skip spaces and tabs (not CR or LF)
     @str.slice!( /\A[ \t]/ );   # Not \s, because we want to capture EOL
     eos? ? :eos : :ok
   end
   
   def peek
-    @str[0]
+    @str[1]                     # Character after the one just matched
   end
 
-  def eos?                        # Are we done with this string?
+  def eos?                      # Are we done with this string?
     @str.empty?
   end
 end
