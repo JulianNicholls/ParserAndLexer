@@ -1,5 +1,9 @@
 require_relative '../lexer'
 
+class Lexer
+  attr_reader :str
+end
+
 describe Lexer do
 
   before :all do
@@ -12,12 +16,25 @@ describe Lexer do
     end
   end
   
-  describe "Strings" do
+  describe ".from" do
+    it "should set the string to work on" do
+      @lexer.from "12345 text"
+      @lexer.str.should eq "12345 text"
+    end
+  end
+  
+  describe "String Finder" do
     it "should find double-quoted strings" do
       @lexer.from '"dq string"'
       @lexer.next.should == { :token => :string, :value => 'dq string' }
     end
     
+    it "should be able to re-find double-quoted strings" do
+      @lexer.from '"dq string"'
+      @lexer.peek_next.should == { :token => :string, :value => 'dq string' }
+      @lexer.next.should == { :token => :string, :value => 'dq string' }
+    end
+
     it "should find single-quoted strings" do
       @lexer.from "'sq string'"
       @lexer.next.should == { :token => :string, :value => 'sq string' }
@@ -28,13 +45,19 @@ describe Lexer do
       expect { @lexer.next }.to raise_exception( LexerError )
     end
   end
-  
-  describe "Numbers" do
+    
+  describe "Number Finder" do
     it "should find integers" do
       @lexer.from "12345"
       @lexer.next.should == { :token => :integer, :value => 12345 }
     end
-  
+
+    it "should find negative values" do
+      @lexer.from "-12345"
+      @lexer.peek_next.should == { :token => :integer, :value => -12345 }
+      @lexer.next.should == { :token => :integer, :value => -12345 }
+    end
+    
     it "should find floating point values" do
       @lexer.from "123.45"
       @lexer.next.should == { :token => :float, :value => 123.45 }
@@ -46,10 +69,20 @@ describe Lexer do
     end
   end
 
-  describe "Identifiers" do
-    it "should find an identifier with just letters" do
-      @lexer.from "var"
-      @lexer.next.should == { :token => :ident, :value => 'var' }
+  describe "Identifier Finder" do
+    it "should find an identifier with just uppercase letters" do
+      @lexer.from "VAR"
+      @lexer.next.should == { :token => :ident, :value => 'VAR' }
+    end
+
+    it "should find an identifier with just lowercase letters" do
+      @lexer.from "var1"
+      @lexer.next.should == { :token => :ident, :value => 'var1' }
+    end
+
+    it "should find an identifier with mixed case" do
+      @lexer.from "Var"
+      @lexer.next.should == { :token => :ident, :value => 'Var' }
     end
 
     it "should find an identifier with letters and numbers" do
@@ -58,19 +91,43 @@ describe Lexer do
     end
 
     it "should find an identifier with letters, underscores and numbers" do
-      @lexer.from "var_2"
-      @lexer.next.should == { :token => :ident, :value => 'var_2' }
+      @lexer.from "Var_2"
+      @lexer.next.should == { :token => :ident, :value => 'Var_2' }
     end
   end
   
-  describe "Assignment" do
+  describe "Assignment Operator" do
     it "should be found" do
       @lexer.from "="
       @lexer.next.should == { :token => :assign }
     end
   end
   
-  describe "Comparisons" do
+  describe ".peek_next" do
+    it "should return the next token, not suck it up, and leave it available for .next" do
+      @lexer.from '"dq string"'
+      
+      @lexer.peek_next.should == { :token => :string, :value => 'dq string' }
+      @lexer.str.should eq '"dq string"'
+      
+      @lexer.peek_next.should == { :token => :string, :value => 'dq string' }
+      @lexer.str.should eq '"dq string"'
+      
+      @lexer.next.should == { :token => :string, :value => 'dq string' }
+    end
+    
+    it "should be able to parse a whole assignment" do
+      @lexer.from 'A1 = -1'
+      @lexer.peek_next.should == { :token => :ident, :value => 'A1' }
+      @lexer.next.should == { :token => :ident, :value => 'A1' }
+      @lexer.peek_next.should == { :token => :assign }
+      @lexer.next.should == { :token => :assign }
+      @lexer.peek_next.should == { :token => :integer, :value => -1 }
+      @lexer.next.should == { :token => :integer, :value => -1 }
+    end    
+  end
+  
+  describe "Comparison Finder" do
     it "should find equality comparison" do
       @lexer.from "=="
       @lexer.next.should == { :token => :cmp_equal }
@@ -102,7 +159,7 @@ describe Lexer do
     end
   end
   
-  describe "Operators" do
+  describe "Operator Finder" do
     it "should find the plus operator" do
       @lexer.from "+"
       @lexer.next.should == { :token => :operator, :value => '+' }
@@ -129,7 +186,7 @@ describe Lexer do
     end
   end
   
-  describe "End of Lines" do
+  describe "End of Line Finder" do
     it "should find the LF character" do
       @lexer.from "\n"
       @lexer.next.should == { :token => :eol }
@@ -159,7 +216,7 @@ describe Lexer do
     end
   end
   
-  describe "Brackets" do
+  describe "Bracket Finder" do
     it "should find an opening bracket" do
       @lexer.from "("
       @lexer.next.should == { :token => :br_open }
@@ -181,7 +238,7 @@ describe Lexer do
     end
   end
   
-  describe "Delimiters" do
+  describe "Delimiter Finder" do
     it "should find a colon" do
       @lexer.from ":"
       @lexer.next.should == { :token => :colon }
@@ -202,6 +259,7 @@ describe Lexer do
     it "PRINT should be found" do
       @lexer.from "PRINT"
       @lexer.next.should == { :token => :PRINT }
+      @lexer.str.should eq ''
     end
   
     it "INPUT should be found" do

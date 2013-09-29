@@ -5,13 +5,14 @@ def capture_stdout &block
   fake_stdout = StringIO.new
   $stdout     = fake_stdout
   
-  block.call
+  yield
   
   fake_stdout.string
   
 ensure
   $stdout = old_stdout
 end
+
 
 describe Parser do
 
@@ -25,53 +26,61 @@ describe Parser do
     end
     
     it "should return 0 for an unused variable" do
-      @parser.variables['A'].should == 0
+      @parser.variables['A'].should eq 0
     end
   end
   
   describe "Assignment" do  # Each section checks that the previous variables are still set correctly
     it "should be able to set an integer" do
-      @parser.line_do "A1=1"      # No spaces
-      @parser.variables['A1'].should == 1 
+      @parser.line_do "A1=1"          # No spaces
+      @parser.variables['A1'].should eq 1 
     end
 
     it "should be able to set a floating point value" do
-      @parser.line_do "A2 =1.5"   # Space before
-      @parser.variables['A2'].should == 1.5 
+      @parser.line_do "A2 =1.5"       # Space before
+      @parser.variables['A2'].should eq 1.5 
       
-      @parser.variables['A1'].should == 1 
+      @parser.variables['A1'].should eq 1 
     end
 
     it "should be able to set a string" do
       @parser.line_do "A3= 'a string'" # Space after
-      @parser.variables['A3'].should == 'a string' 
+      @parser.variables['A3'].should eq 'a string' 
       
-      @parser.variables['A1'].should == 1 
-      @parser.variables['A2'].should == 1.5 
+      @parser.variables['A1'].should eq 1 
+      @parser.variables['A2'].should eq 1.5 
     end
 
     it "should be able to set the value of another variable" do
-      @parser.line_do "A4 = A2" # Space both
-      @parser.variables['A4'].should == 1.5 
-      @parser.variables['A4'].should == @parser.variables['A2'] # Redundant, really
+      @parser.line_do "A4 = A2"       # Space both
+      @parser.variables['A4'].should eq 1.5 
+      @parser.variables['A4'].should eq @parser.variables['A2'] # Redundant, really
       
-      @parser.variables['A1'].should == 1 
-      @parser.variables['A2'].should == 1.5 
-      @parser.variables['A3'].should == 'a string' 
+      @parser.variables['A1'].should eq 1 
+      @parser.variables['A2'].should eq 1.5 
+      @parser.variables['A3'].should eq 'a string' 
     end
     
     it "should use LET if it's present" do
       @parser.line_do "LET A5=5"      # No spaces
-      @parser.variables['A5'].should == 5 
+      @parser.variables['A5'].should eq 5 
       
-      @parser.variables['A1'].should == 1 
-      @parser.variables['A2'].should == 1.5 
-      @parser.variables['A3'].should == 'a string' 
-      @parser.variables['A4'].should == 1.5 
+      @parser.variables['A1'].should eq 1 
+      @parser.variables['A2'].should eq 1.5 
+      @parser.variables['A3'].should eq 'a string' 
+      @parser.variables['A4'].should eq 1.5 
     end
   end
   
   describe "PRINT" do
+    it "should work on its own to make a blank line" do
+      output = capture_stdout do
+        @parser.line_do "PRINT"
+      end
+      
+      output.should eq "\n"
+    end
+  
     it "should allow printing of strings" do
       output = capture_stdout do
         @parser.line_do "PRINT 'hello world'" # UGH!
@@ -135,5 +144,15 @@ describe Parser do
       
       output.should eq "1.5\t"
     end    
+  end
+  
+  describe "Malformed lines" do
+    it "should raise an error for reserved word used as variable" do
+      expect { @parser.line_do "LET INPUT = 1" }.to raise_error( ParserError )
+    end
+
+    it "should raise an error for INPUT without a variable" do
+      expect { capture_stdout { @parser.line_do "INPUT 'Prompt';" } }.to raise_error( ParserError )  # Reserved word used as variable
+    end
   end
 end
