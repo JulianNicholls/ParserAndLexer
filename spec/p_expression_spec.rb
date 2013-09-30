@@ -100,4 +100,16 @@ describe Parser do
     end
   end
   
+  describe "Exceptions" do
+    it "should be thrown for a missing right bracket" do
+      @parser.feed_expression "10 *(7+8"
+      expect { @parser.expression }.to raise_error( ParserError )
+    end
+      
+    it "should be thrown for a completely illegal expression" do
+      @parser.feed_expression "10 + 'str'"
+      expect { @parser.expression }.to raise_error( ParserError )
+    end
+  end
+
 end

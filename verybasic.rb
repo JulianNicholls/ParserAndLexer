@@ -101,6 +101,23 @@ private
     @variables[item.value] = value
   end
 
+  
+  def inequality
+    lhside = expression
+    cmp    = expect [:assign, :cmp_eq, :cmp_ne, :cmp_gt, :cmp_gte, :cmp_lt, :cmp_lte]
+    rhside = expression
+    
+    case cmp.type
+      when  :cmp_eq, :assign then  reply = (lhside == rhside)
+      when  :cmp_ne   then  reply = (lhside != rhside)
+      when  :cmp_gt   then  reply = (lhside > rhside)
+      when  :cmp_gte  then  reply = (lhside >= rhside)
+      when  :cmp_lt   then  reply = (lhside < rhside)
+      when  :cmp_lte  then  reply = (lhside <= rhside)
+    end
+    
+    reply
+  end
 
   def expression
     part1 = factor
