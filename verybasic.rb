@@ -1,20 +1,44 @@
-# verybasic
+#----------------------------------------------------------------------------
+# Very basic BASIC parser.
+#----------------------------------------------------------------------------
 
 require './lexer'
 
+
+#----------------------------------------------------------------------------
+# Exception thrown for syntax errors.
+#----------------------------------------------------------------------------
+
 class ParserError < Exception
 end
+
+
+#----------------------------------------------------------------------------
+# Parser
+#----------------------------------------------------------------------------
 
 class Parser
   
   attr_reader :variables
   
+  #--------------------------------------------------------------------------
+  # Initialise, potentially with a different lexer than the default
+  #--------------------------------------------------------------------------
+
   def initialize opts = {}
     @line      = nil
-    @variables = Hash.new( 0 )    # Unknown variables = 0
     @lexer     = opts[:lexer] || Lexer.new
+    @variables = Hash.new( 0 )
+    
+    @variables['PI'] = Math::PI
+    @variables['E']  = Math::E
   end
   
+
+  #--------------------------------------------------------------------------
+  # Do one line of BASIC
+  #--------------------------------------------------------------------------
+
   def line_do line
     @line = line
     
@@ -34,10 +58,18 @@ class Parser
       when :INPUT                   # Input
         do_input
         
+      when :IF                      # Conditional
+        do_conditional
+        
       else                          # Ignore the not understood for now
         do_ignore
     end
   end
+
+  
+  #--------------------------------------------------------------------------
+  # Inspect
+  #--------------------------------------------------------------------------
 
   def inspect
     ret = "#<Parser @line=\"#{@line}\" #@variables"
@@ -47,11 +79,20 @@ class Parser
   
 private
 
+  #--------------------------------------------------------------------------
+  # Temporary function to ignore lines not understood, which is most of them
+  # at the moment
+  #--------------------------------------------------------------------------
+
   def do_ignore
     puts "IGNORING <#@line> FOR NOW";
   end
   
   
+  #--------------------------------------------------------------------------
+  # Perform an assignment, optionally led in by LET.
+  #--------------------------------------------------------------------------
+
   def do_assignment statement
     if statement.type == :LET
       ident = (expect [:ident]).value
@@ -69,6 +110,10 @@ private
   end
   
   
+  #--------------------------------------------------------------------------
+  # Do a PRINT
+  #--------------------------------------------------------------------------
+
   def do_print
     last, item = nil, nil
     
@@ -85,6 +130,10 @@ private
   end
   
   
+  #--------------------------------------------------------------------------
+  # Allow input from the 'user'
+  #--------------------------------------------------------------------------
+
   def do_input
     item = nil
     
@@ -102,6 +151,10 @@ private
   end
 
   
+  #--------------------------------------------------------------------------
+  # Evaluate a comparison expression
+  #--------------------------------------------------------------------------
+
   def inequality
     lhside = expression
     cmp    = expect [:assign, :cmp_eq, :cmp_ne, :cmp_gt, :cmp_gte, :cmp_lt, :cmp_lte]
@@ -118,6 +171,11 @@ private
     
     reply
   end
+
+  #--------------------------------------------------------------------------
+  # Evaluate an arithmetic expression, involving +, -, *, /, % (modulo)
+  # To come: ^ for exponentiation
+  #--------------------------------------------------------------------------
 
   def expression
     part1 = factor
@@ -141,6 +199,10 @@ private
   end
   
   
+  #--------------------------------------------------------------------------
+  # Evaluate a multiplicative expression
+  #--------------------------------------------------------------------------
+
   def factor
     factor1 = term
     
@@ -162,6 +224,12 @@ private
     factor1
   end
   
+
+  #--------------------------------------------------------------------------
+  # Evaluate a single term (variable, number, bracketed expression) in an 
+  # expression
+  #--------------------------------------------------------------------------
+
   def term
     t = @lexer.next
     
@@ -181,6 +249,10 @@ private
   end
   
   
+  #--------------------------------------------------------------------------
+  # Print one item (string, number, variable, separator)
+  #--------------------------------------------------------------------------
+
   def print_item item
     case item.type
       when :string, :float, :integer  then print item.value
@@ -189,6 +261,11 @@ private
     end
   end
   
+
+  #--------------------------------------------------------------------------
+  # Read the next token and check that it is one of the expected ones, 
+  # throwing an exception if not
+  #--------------------------------------------------------------------------
 
   def expect options
     this = @lexer.next
@@ -200,6 +277,10 @@ private
   end
   
   
+  #--------------------------------------------------------------------------
+  # Return the value of a stored variable
+  #--------------------------------------------------------------------------
+
   def value_of name
     @variables[name]
   end
@@ -217,6 +298,8 @@ if __FILE__ == $0
     p.line_do 'INPUT "Value for A9";A9'
     p.line_do "A7 = A8"   # Test default value
     p.line_do 'PRINT'
+    p.line_do 'PRINT "PI=";PI'
+    p.line_do 'PRINT "E=";E'
     p.line_do 'PRINT "String 1"'
     p.line_do "PRINT 'String 2'"
     p.line_do "PRINT A1, A5"
