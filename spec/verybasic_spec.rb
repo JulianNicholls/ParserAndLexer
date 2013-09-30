@@ -152,7 +152,7 @@ describe Parser do
     end
 
     it "should raise an error for INPUT without a variable" do
-      expect { capture_stdout { @parser.line_do "INPUT 'Prompt';" } }.to raise_error( ParserError )  # Reserved word used as variable
+      expect { capture_stdout { @parser.line_do "INPUT 'Prompt';" } }.to raise_error( ParserError )
     end
   end
 end
