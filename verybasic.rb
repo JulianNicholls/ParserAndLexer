@@ -39,12 +39,15 @@ class Parser
   # Do one line of BASIC
   #--------------------------------------------------------------------------
 
-  def line_do line
-    @line = line
-    
+  def line_do line = nil
+    unless line.nil?
+      @line = line
+      @lexer.from @line
+    end
+
     raise ParserError.new( "No input specified" ) if @line.nil?
     
-    statement = @lexer.from( @line ).next
+    statement = @lexer.next
     
     case statement.type
       when :eos, :REM then return   # Empty or comment line, ignore
@@ -118,9 +121,9 @@ private
     last, item = nil, nil
     
     loop do
-      item = expect [:string, :float, :integer, :ident, :separator, :eos]
+      item = expect [:string, :float, :integer, :ident, :separator, :eos, :eol]
 
-      break if item.type == :eos
+      break if item.type == :eos || item.type == :eol
       print_item item
       
       last = item
@@ -131,7 +134,8 @@ private
   
   
   #--------------------------------------------------------------------------
-  # Allow input from the 'user'
+  # Allow input from the 'user'. The value is collected as numeric if the 
+  # input is all digits, with an optional decimal point.
   #--------------------------------------------------------------------------
 
   def do_input
@@ -147,10 +151,28 @@ private
       
     print '? '
     value = gets.chomp
+    if value =~ /^[\d\.]+$/  # All digits
+      value = (value.include? '.') ? value.to_f : value.to_i
+    end
     @variables[item.value] = value
   end
 
   
+  #--------------------------------------------------------------------------
+  # Evaluate a conditional expression led in by IF and do the requested thing 
+  # if the condition is true.
+  #--------------------------------------------------------------------------
+
+  def do_conditional
+    if inequality
+      expect [:THEN]
+      line_do
+    else
+      skip_to_end
+    end
+  end
+  
+
   #--------------------------------------------------------------------------
   # Evaluate a comparison expression
   #--------------------------------------------------------------------------
@@ -285,6 +307,15 @@ private
     @variables[name]
   end
 
+  #--------------------------------------------------------------------------
+  # Skip to the end of the current line or string
+  #--------------------------------------------------------------------------
+
+  def skip_to_end
+    while !([:eos, :eol].include? @lexer.next.type)
+    end
+  end
+  
 end
 
 
