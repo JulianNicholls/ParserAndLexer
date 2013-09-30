@@ -19,8 +19,6 @@ end
 
 class Parser
   
-  attr_reader :variables
-  
   #--------------------------------------------------------------------------
   # Initialise, potentially with a different lexer than the default
   #--------------------------------------------------------------------------
@@ -29,6 +27,8 @@ class Parser
     @line      = nil
     @lexer     = opts[:lexer] || Lexer.new
     @variables = Hash.new( 0 )
+    
+    # Initialise PI and E
     
     @variables['PI'] = Math::PI
     @variables['E']  = Math::E
