@@ -45,21 +45,6 @@ class Parser
     ret + '>'
   end
   
-  def expression
-    value = term
-    
-  end
-  
-  
-  def term
-  
-  end
-  
-  
-  def factor
-  
-  end
-  
 private
 
   def do_ignore
@@ -75,13 +60,12 @@ private
     end
     
     expect [:assign]
-    
-    targ = expect [:integer, :float, :ident, :string]
 
-    val = targ.value
-    val = value_of( val ) if targ.type == :ident   # Another variable
-    
-    @variables[ident] = val
+    if @lexer.peek_next.type == :string
+      @variables[ident] = @lexer.next.value
+    else
+      @variables[ident] = expression
+    end
   end
   
   
@@ -118,6 +102,68 @@ private
   end
 
 
+  def expression
+    part1 = factor
+    
+    t = @lexer.peek_next
+    
+    while [:plus, :minus].include? t.type
+      t     = @lexer.next
+      part2 = factor
+      
+      if t.type == :plus
+        part1 += part2
+      else
+        part1 -= part2
+      end
+      
+      t = @lexer.peek_next
+    end
+    
+    part1
+  end
+  
+  
+  def factor
+    factor1 = term
+    
+    t = @lexer.peek_next
+    
+    while [:multiply, :divide, :modulo].include? t.type
+      t       = @lexer.next
+      factor2 = term
+      
+      case t.type
+        when :multiply  then  factor1 *= factor2
+        when :divide    then  factor1 /= factor2
+        when :modulo    then  factor1 = factor1.modulo factor2
+      end
+
+      t = @lexer.peek_next
+    end
+    
+    factor1
+  end
+  
+  def term
+    t = @lexer.next
+    
+    if t.type == :br_open
+      value = expression
+      
+      expect [:br_close]
+    elsif [:integer, :float].include? t.type
+      value = t.value
+    elsif t.type == :ident
+      value = value_of( t.value )
+    else
+      raise ParserError.new( "Unexpected token in term: #{t}" )
+    end
+    
+    value
+  end
+  
+  
   def print_item item
     case item.type
       when :string, :float, :integer  then print item.value
@@ -126,6 +172,7 @@ private
     end
   end
   
+
   def expect options
     this = @lexer.next
     
