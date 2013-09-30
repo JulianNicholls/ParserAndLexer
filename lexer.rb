@@ -190,7 +190,7 @@ private
   #----------------------------------------------------------------------------
   
   def collect_operator mat
-    if mat.to_s == '-' && (/\d/.match( peek ))
+    if mat.to_s == '-' && (peek =~ /\d/)
       re = /\A-[\d\.]+/
       mat2 = re.match @str
       @last_re = re
@@ -213,7 +213,7 @@ private
 
     # Throw a fit if there's more than one decimal point
     
-    raise LexerError.new( "Invalid number encountered: #{str}" ) if /.*\..*\./.match str
+    raise LexerError.new( "Invalid number encountered: #{str}" ) if str =~ /.*\..*\./
 
     Token.new( is_f ? :float : :integer, is_f ? str.to_f : str.to_i  )
   end
@@ -240,7 +240,7 @@ private
   def collect_string mat
     del  = mat.to_s
     re   = Regexp.new "#{del}([^#{del}]+)#{del}"
-    mat2 = re.match( @str )
+    mat2 = re.match @str
     
     raise LexerError.new( "Unterminated string encountered: #{@str}" ) if mat2.nil?
 
