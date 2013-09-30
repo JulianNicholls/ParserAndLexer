@@ -29,12 +29,6 @@ describe Lexer do
       @lexer.next.should == Token.new( :string, 'dq string' )
     end
     
-    it "should be able to re-find double-quoted strings" do
-      @lexer.from '"dq string"'
-      @lexer.peek_next.should == Token.new( :string, 'dq string' )
-      @lexer.next.should == Token.new( :string, 'dq string' )
-    end
-
     it "should find single-quoted strings" do
       @lexer.from "'sq string'"
       @lexer.next.should == Token.new( :string, 'sq string' )
@@ -116,7 +110,7 @@ describe Lexer do
       @lexer.next.should == Token.new( :string, 'dq string' )
    end
     
-    it "should be able to parse a whole assignment" do
+   it "should be able to parse a whole assignment" do
       @lexer.from 'A1 = -1'
       
       @lexer.peek_next.should == Token.new( :ident, 'A1' )
@@ -217,7 +211,7 @@ describe Lexer do
     end
 
     it "should find a combination of LFs and CRs and swallow all of it" do
-      @lexer.from "\n\r\n"
+      @lexer.from "\n\n\r\r\n"
       @lexer.next.should == Token.new( :eol )
       @lexer.next.should == Token.new( :eos )
     end

@@ -1,5 +1,10 @@
 require_relative '../verybasic.rb'
 
+class Parser
+  attr_reader :variables
+end
+
+
 #----------------------------------------------------------------------------
 # Capture the printed output so it can be examined (or ignored).
 #----------------------------------------------------------------------------
