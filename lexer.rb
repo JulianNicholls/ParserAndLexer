@@ -30,7 +30,17 @@ end
 
 #----------------------------------------------------------------------------
 # Lexer capable of collecting the salient parts of BASIC by default.
-# The list of reserved words is replaceable
+# The list of reserved words is replaceable.
+#
+# Backtracking by one token is inevitable, e.g. during arithmetic expression
+# evaluation, and there are two obvious ways to do that.
+#
+# 1. a function to return the next token destructively and a reversion 
+#    function to return it again.
+#
+# 2. The choice below, which is to have a way to peek at the next token 
+#    non-destructively.
+#
 #----------------------------------------------------------------------------
 
 class Lexer
@@ -51,16 +61,29 @@ class Lexer
     /\A[,;]/          => :collect_separator
   }
   
+  
+  #----------------------------------------------------------------------------
+  # Initialise, potentially with a replaced set of reserved words
+  #----------------------------------------------------------------------------
+  
   def initialize opts = {}
     @reserved = opts[:reserved] || RESERVED
   end
 
+  
+  #----------------------------------------------------------------------------
+  # Get string to work from
+  #----------------------------------------------------------------------------
   
   def from string
     @str = String.new string
     self              # Allow chaining
   end
 
+  
+  #----------------------------------------------------------------------------
+  # Return the next token, removing it from the string
+  #----------------------------------------------------------------------------
   
   def next
     ret = peek_next
@@ -70,13 +93,17 @@ class Lexer
   end
 
   
+  #----------------------------------------------------------------------------
+  # Return the next token non-destructively
+  #----------------------------------------------------------------------------
+  
   def peek_next
     raise LexerError.new( "No string specified" ) if @str.nil?
     
     if skip_space != :eos
       PATTERNS.each do |re, func|
         re.match( @str ) do |mat|
-          @last_re = re
+          @last_re = re           # This is what will be removed
           return self.send( func, mat )
         end
       end
@@ -91,43 +118,78 @@ class Lexer
   
 private
 
-  def collect_colon mat           # Simple :
+  #----------------------------------------------------------------------------
+  # Simply match a colon
+  #----------------------------------------------------------------------------
+  
+  def collect_colon mat
     Token.new :colon
   end
   
   
-  def collect_eol mat             # End of Line
+  #----------------------------------------------------------------------------
+  # Match a set of CR and LF, returning a single token.
+  #----------------------------------------------------------------------------
+  
+  def collect_eol mat
     Token.new :eol
   end
   
   
-  def collect_compare mat         # Comparison operator
+  #----------------------------------------------------------------------------
+  # Match a comparison operator: =, ==, !=, <, <=, >, >=
+  #----------------------------------------------------------------------------
+  
+  def collect_compare mat
     cmps = { '!=' => :cmp_ne, '<' => :cmp_lt, '<=' => :cmp_lte, '>' => :cmp_gt, '>=' => :cmp_gte }
     Token.new cmps[mat.to_s]
   end
 
   
-  def collect_separator mat        # PRINT separator: ; or ,
+  #----------------------------------------------------------------------------
+  # Match a print separator: ; or ,
+  #----------------------------------------------------------------------------
+  
+  def collect_separator mat
     Token.new( :separator, mat.to_s )
   end
 
   
-  def collect_equals mat          # Assignment or comparison
+  #----------------------------------------------------------------------------
+  # Match an assignment or equality comparison: = or ==
+  # Although = is assignment, it is accepted as equals in a comparison 
+  # expression
+  #----------------------------------------------------------------------------
+  
+  def collect_equals mat
     Token.new( (mat.to_s == '=') ? :assign : :cmp_eq )
   end
 
 
-  def collect_bracket mat         # Normal Bracket
+  #----------------------------------------------------------------------------
+  # Match a bracket: ( or )
+  #----------------------------------------------------------------------------
+  
+  def collect_bracket mat
     Token.new( (mat.to_s == '(') ? :br_open : :br_close )
   end
 
 
+  #----------------------------------------------------------------------------
+  # Match a square bracket: [ or ]
+  #----------------------------------------------------------------------------
+  
   def collect_sqbracket mat       # Square bracket
     Token.new( (mat.to_s == '[') ? :sqbr_open : :sqbr_close )
   end
   
   
-  def collect_operator mat        # Arithmetic operator, or negative value
+  #----------------------------------------------------------------------------
+  # Match an arithmetic operator, or a negative number because that is led-in 
+  # by a minus operator, of course.
+  #----------------------------------------------------------------------------
+  
+  def collect_operator mat
     if mat.to_s == '-' && (/\d/.match( peek ))
       re = /\A-[\d\.]+/
       mat2 = re.match @str
@@ -141,7 +203,11 @@ private
   end
 
   
-  def collect_number mat          # Number, either integer or float
+  #----------------------------------------------------------------------------
+  # Match a number, either an integer or a floating-point value
+  #----------------------------------------------------------------------------
+  
+  def collect_number mat
     str  = mat.to_s
     is_f = str.include? '.'
 
@@ -153,7 +219,11 @@ private
   end
   
   
-  def collect_ident mat           # Identifier or reserved word
+  #----------------------------------------------------------------------------
+  # Match a variable identifier, upper and lower case, underscores and numbers
+  #----------------------------------------------------------------------------
+  
+  def collect_ident mat
     str = mat.to_s
     if @reserved.include? str
       Token.new( str.to_sym )
@@ -163,7 +233,11 @@ private
   end
 
   
-  def collect_string mat          # String delimited by ' or "
+  #----------------------------------------------------------------------------
+  # Match a string delimited by either ' or ".
+  #----------------------------------------------------------------------------
+  
+  def collect_string mat
     del  = mat.to_s
     re   = Regexp.new "#{del}([^#{del}]+)#{del}"
     mat2 = re.match( @str )
@@ -176,15 +250,28 @@ private
   end
 
 
-  def skip_space                # Skip spaces and tabs (not CR or LF)
-    @str.slice!( /\A[ \t]/ );   # Not \s, because we want to capture EOL
+  #----------------------------------------------------------------------------
+  # Skip spaces and tabs and return EOS if there's no more to be had.
+  #----------------------------------------------------------------------------
+  
+  def skip_space
+    @str.slice!( /\A[ \t]/ );   # Not \s, because we want to capture EOL characters
     eos? ? :eos : :ok
   end
+  
+  #----------------------------------------------------------------------------
+  # Peek at the character after the current one, so that we can see if there is
+  # a digit following a minus sign, for example
+  #----------------------------------------------------------------------------
   
   def peek
     @str[1]                     # Character after the one just matched
   end
 
+  #----------------------------------------------------------------------------
+  # Return whether the string is exhausted
+  #----------------------------------------------------------------------------
+  
   def eos?                      # Are we done with this string?
     @str.empty?
   end
