@@ -7,7 +7,30 @@ end
 
 
 #----------------------------------------------------------------------------
-# Lexer capable of collecting the salient parts of BASIC
+# Token returned by lexer
+#----------------------------------------------------------------------------
+
+class Token
+
+  attr_reader :type, :value
+  
+  def initialize( type, value = nil )
+    @type, @value  = type, value
+  end
+  
+  def to_s
+    "<#@type: #@value>"
+  end
+  
+  def == other
+    (type == other.type) && (value == other.value)
+  end
+end
+
+
+#----------------------------------------------------------------------------
+# Lexer capable of collecting the salient parts of BASIC by default.
+# The list of reserved words is replaceable
 #----------------------------------------------------------------------------
 
 class Lexer
@@ -58,48 +81,49 @@ class Lexer
         end
       end
       
-      ret  = { :token => :failed, :value => @str }
+      ret  = Token.new( :failed, @str )
       @str = ''
       return ret
     end
     
-    { :token => :eos }
+    Token.new :eos
   end
   
 private
 
   def collect_colon mat           # Simple :
-    { :token => :colon }
+    Token.new :colon
   end
   
   
   def collect_eol mat             # End of Line
-    { :token => :eol }
+    Token.new :eol
   end
   
   
   def collect_compare mat         # Comparison operator
-    { :token => :comparison, :value => mat.to_s }
+    cmps = { '!=' => :cmp_ne, '<' => :cmp_lt, '<=' => :cmp_lte, '>' => :cmp_gt, '>=' => :cmp_gte }
+    Token.new cmps[mat.to_s]
   end
 
   
   def collect_separator mat        # PRINT separator: ; or ,
-    { :token => :separator, :value => mat.to_s }
+    Token.new( :separator, mat.to_s )
   end
 
   
   def collect_equals mat          # Assignment or comparison
-    { :token => (mat.to_s == '=') ? :assign : :cmp_equal }
+    Token.new( (mat.to_s == '=') ? :assign : :cmp_eq )
   end
 
 
   def collect_bracket mat         # Normal Bracket
-    { :token => (mat.to_s == '(') ? :br_open : :br_close }
+    Token.new( (mat.to_s == '(') ? :br_open : :br_close )
   end
 
 
   def collect_sqbracket mat       # Square bracket
-    { :token => (mat.to_s == '[') ? :sqbr_open : :sqbr_close }
+    Token.new( (mat.to_s == '[') ? :sqbr_open : :sqbr_close )
   end
   
   
@@ -111,7 +135,9 @@ private
       return collect_number mat2.to_s
     end
     
-    { :token => :operator, :value => mat.to_s }
+    operators = { '-' => :minus, '+' => :plus, '*' => :multiply, '/' => :divide, '%' => :modulo }
+    
+    Token.new operators[mat.to_s]
   end
 
   
@@ -123,16 +149,16 @@ private
     
     raise LexerError.new( "Invalid number encountered: #{str}" ) if /.*\..*\./.match str
 
-    { :token => is_f ? :float : :integer, :value => is_f ? str.to_f : str.to_i }
+    Token.new( is_f ? :float : :integer, is_f ? str.to_f : str.to_i  )
   end
   
   
   def collect_ident mat           # Identifier or reserved word
     str = mat.to_s
     if @reserved.include? str
-      { :token => str.to_sym }
+      Token.new( str.to_sym )
     else
-      { :token => :ident, :value => str }
+      Token.new( :ident, str )
     end
   end
 
@@ -146,7 +172,7 @@ private
 
     @last_re = re
     
-    return { :token => :string, :value => mat2[1] }
+    Token.new( :string, mat2[1] )
   end
 
 
@@ -168,8 +194,8 @@ end
 if $0 == __FILE__
 def render_loop lex
   cur = lex.next
-  while cur[:token] != :eos
-    render cur
+  while cur.type != :eos
+    print cur
     cur = lex.next
   end
   
@@ -177,16 +203,10 @@ def render_loop lex
 end
 
 
-def render this
-  print "  [#{this[:token]}: #{this[:value]}#{' *** INVALID ***' if this[:invalid]}]"
-end
-
-
   tests = [
     'LET str3="valid words"',
     "varname = 12 + 25 / 89.1",
     "second=varname",
-    'str3 = "unterminated',
     'PRINT A3',
     'FOR I = 1 TO 10 STEP 3',
     'IF A3 > 1 THEN',
@@ -195,21 +215,29 @@ end
     'A10 = -47',
     'j < k <= m >= n != o',
     "second==varname\n(2+3)",
+    'str3 = "unterminated',
   ]
+  
+  t = Token.new( :ident, 'new' )
   
   lex = Lexer.new
   
   # Try to provoke an exception
   
   begin
-    fail = lex.next
+    fail = lex.next    
   rescue LexerError => lexex
     puts "Expected exception: #{lexex}"
   end
-  
-  tests.each do |t| 
-    puts "\n|#{t}|"
-    lex.from t
-    render_loop lex
+
+  begin
+    tests.each do |t| 
+      puts "\n|#{t}|"
+      lex.from t
+      render_loop lex
+    end
+  rescue LexerError => lexex
+    puts "\nExpected exception: #{lexex}"
   end
+  
 end  
