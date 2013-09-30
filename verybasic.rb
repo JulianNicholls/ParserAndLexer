@@ -22,7 +22,7 @@ class Parser
     
     statement = @lexer.from( @line ).next
     
-    case statement[:token]
+    case statement.type
       when :eos, :REM then return   # Empty or comment line, ignore
       
       when :LET, :ident             # Assignment with LET optional
@@ -68,18 +68,18 @@ private
   
   
   def do_assignment statement
-    if statement[:token] == :LET
-      ident = (expect [:ident])[:value]
+    if statement.type == :LET
+      ident = (expect [:ident]).value
     else
-      ident = statement[:value]
+      ident = statement.value
     end
     
     expect [:assign]
     
     targ = expect [:integer, :float, :ident, :string]
 
-    val = targ[:value]
-    val = value_of( val ) if targ[:token] == :ident   # Another variable
+    val = targ.value
+    val = value_of( val ) if targ.type == :ident   # Another variable
     
     @variables[ident] = val
   end
@@ -91,13 +91,13 @@ private
     loop do
       item = expect [:string, :float, :integer, :ident, :separator, :eos]
 
-      break if item[:token] == :eos
+      break if item.type == :eos
       print_item item
       
       last = item
     end
     
-    puts unless last && (last[:value] == ';' || last[:value] == ',')
+    puts unless last && (last.type == :separator)
   end
   
   
@@ -106,23 +106,23 @@ private
     
     loop do
       item = expect [:string, :separator, :ident, :eos]
-      break if item[:token] == :ident
-      raise ParserError.new( "No variable specified for INPUT" ) if item[:token] == :eos
+      break if item.type == :ident
+      raise ParserError.new( "No variable specified for INPUT" ) if item.type == :eos
       
       print_item item
     end
       
     print '? '
     value = gets.chomp
-    @variables[item[:value]] = value
+    @variables[item.value] = value
   end
 
 
   def print_item item
-    case item[:token]
-      when :string, :float, :integer  then print item[:value]
-      when :ident                     then print value_of item[:value]
-      when :separator                 then print "\t" if item[:value] == ','
+    case item.type
+      when :string, :float, :integer  then print item.value
+      when :ident                     then print value_of( item.value )
+      when :separator                 then print "\t" if item.value == ','
     end
   end
   
@@ -130,7 +130,7 @@ private
     this = @lexer.next
     
     raise ParserError.new( "Unxexpected <#{this}> in #@line." ) \
-      unless options.include? this[:token]
+      unless options.include? this.type
     
     this
   end
