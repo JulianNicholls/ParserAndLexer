@@ -72,11 +72,11 @@ class Lexer
 
   
   #----------------------------------------------------------------------------
-  # Get string to work from
+  # Get string to work from, making sure that we have a copy of it!
   #----------------------------------------------------------------------------
   
   def from string
-    @str = String.new string
+    @str = string.dup
     self              # Allow chaining
   end
 
@@ -87,7 +87,7 @@ class Lexer
   
   def next
     ret = peek_next
-    @str.slice! @last_re
+    @str.slice! @last_re if ret.type != :eos
     
     ret
   end
@@ -255,7 +255,7 @@ private
   #----------------------------------------------------------------------------
   
   def skip_space
-    @str.slice!( /\A[ \t]/ );   # Not \s, because we want to capture EOL characters
+    @str.slice!( /\A[ \t]+/ );   # Not \s, because we want to capture EOL characters
     eos? ? :eos : :ok
   end
   
