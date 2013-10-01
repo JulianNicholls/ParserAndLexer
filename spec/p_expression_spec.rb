@@ -1,4 +1,4 @@
-require_relative '../verybasic.rb'
+require_relative '../parser.rb'
 
 class Parser
 

@@ -1,4 +1,4 @@
-require_relative '../verybasic.rb'
+require_relative '../parser.rb'
 
 class Parser
   attr_reader :variables
@@ -31,7 +31,7 @@ def feed_stdin( str, &block )
   fake_stdin = StringIO.new str
   $stdin     = fake_stdin
   
-  yield
+  yield str
 ensure
   $stdin = old_stdin
 end
