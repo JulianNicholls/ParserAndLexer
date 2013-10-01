@@ -1,7 +1,3 @@
-#----------------------------------------------------------------------------
-# Very basic BASIC parser.
-#----------------------------------------------------------------------------
-
 require './lexer'
 
 
@@ -26,15 +22,38 @@ class Parser
   def initialize opts = {}
     @line      = nil
     @lexer     = opts[:lexer] || Lexer.new
+    
+    reset_variables
+  end
+
+  def reset_variables
     @variables = Hash.new( 0 )
     
     # Initialise PI and E
     
     @variables['PI'] = Math::PI
-    @variables['E']  = Math::E
+    @variables['E']  = Math::E  
   end
   
+  #--------------------------------------------------------------------------
+  # Do a whole program with lines separated by EOL characters
+  #--------------------------------------------------------------------------
+  
+  def do_program program
+    raise ParserError.new( "empty program specified" ) if program.nil? || program.empty?
+    
+    reset_variables
+    
+    @program = program.dup  # Make a copy
+    @line_re = nil
 
+    while line = next_program_line
+#      puts "LINE: #{line.inspect}"
+      break if line_do( line[1] ) == :END
+    end
+  end
+
+  
   #--------------------------------------------------------------------------
   # Do one line of BASIC
   #--------------------------------------------------------------------------
@@ -50,7 +69,9 @@ class Parser
     statement = @lexer.next
     
     case statement.type
-      when :eos, :REM then return   # Empty or comment line, ignore
+      when :eos then return :eos    # May be expected, or not...
+      
+      when :REM then return :eol    # Empty or comment line, ignore
       
       when :LET, :ident             # Assignment with LET optional
         do_assignment statement
@@ -64,9 +85,25 @@ class Parser
       when :IF                      # Conditional
         do_conditional
         
+      when :FOR                     # FOR loop
+        do_for
+        
+      when :NEXT                    # End of FOR loop
+        return :NEXT
+        
+        
+      when :STOP                    # Emergency stop, as I recall
+        puts "STOPped"
+        return :END
+        
+      when :END                     # Graceful end
+        return  :END
+        
       else                          # Ignore the not understood for now
         do_ignore
     end
+    
+    return :eol                     # Signify that the line has been handled
   end
 
   
@@ -75,9 +112,7 @@ class Parser
   #--------------------------------------------------------------------------
 
   def inspect
-    ret = "#<Parser @line=\"#{@line}\" #@variables"
-    
-    ret + '>'
+    "#<Parser @line=\"#{@line}\" #@variables>"
   end
   
 private
@@ -172,7 +207,62 @@ private
     end
   end
   
+  
+  #--------------------------------------------------------------------------
+  # Do a FOR loop
+  #--------------------------------------------------------------------------
 
+  def do_for                # FOR ...
+    var = expect [:ident]   # var ...
+    expect [:assign]        # = ...
+    start = expression      # 1 ...
+    expect [:TO]            # TO ...
+    finish = expression     # 10 ...
+    nt = @lexer.peek_next
+    step = 1
+    
+    if nt.type == :STEP
+      @lexer.next   # Swallow step
+      step = expression
+    end
+
+#    puts "FOR #{var.value} = #{start} TO #{finish} STEP #{step}"
+    cur   = start
+    place = @program.dup
+    
+    loop do
+      if step < 0
+        break if cur < finish
+      else
+        break if cur > finish
+      end
+      
+ #     print "  Checked"
+      
+      @program = place.dup
+      @variables[var.value] = cur
+      
+      ret = nil
+      
+      loop do
+        line = next_program_line
+  #      puts "  LINE: #{line[1]}"
+      
+        ret  = line_do line[1]
+        
+   #     puts "  RET: #{ret}"
+        break if ret == :eos || ret == :NEXT || ret == :END
+      end
+      
+      raise ParserError.new( "Missing NEXT" ) if ret == :eos
+      break if ret == :END
+      
+      # We got NEXT, so go around again
+      cur += step
+    end
+    
+  end
+  
   #--------------------------------------------------------------------------
   # Evaluate a comparison expression
   #--------------------------------------------------------------------------
@@ -183,15 +273,13 @@ private
     rhside = expression
     
     case cmp.type
-      when  :cmp_eq, :assign then  reply = (lhside == rhside)
-      when  :cmp_ne   then  reply = (lhside != rhside)
-      when  :cmp_gt   then  reply = (lhside > rhside)
-      when  :cmp_gte  then  reply = (lhside >= rhside)
-      when  :cmp_lt   then  reply = (lhside < rhside)
-      when  :cmp_lte  then  reply = (lhside <= rhside)
+      when  :cmp_eq, :assign then  (lhside == rhside)
+      when  :cmp_ne   then  (lhside != rhside)
+      when  :cmp_gt   then  (lhside > rhside)
+      when  :cmp_gte  then  (lhside >= rhside)
+      when  :cmp_lt   then  (lhside < rhside)
+      when  :cmp_lte  then  (lhside <= rhside)
     end
-    
-    reply
   end
 
   #--------------------------------------------------------------------------
@@ -272,6 +360,21 @@ private
   
   
   #--------------------------------------------------------------------------
+  # Get the next line from the program
+  #--------------------------------------------------------------------------
+
+  def next_program_line
+    if @line_re
+      @program.slice! @line_re
+    else
+      @line_re = /\A(.*)[\n\r]+/
+    end
+    
+    @line_re.match @program
+  end
+
+  
+  #--------------------------------------------------------------------------
   # Print one item (string, number, variable, separator)
   #--------------------------------------------------------------------------
 
@@ -322,28 +425,46 @@ end
 if __FILE__ == $0
   p = Parser.new
 
+  program1 = %{
+REM *** FIRST PROGRAM
+REM
+LET A1 = 1
+A2 = 2
+A3 = A1 + A2
+PRINT "A1=";A1,"A2=";A2,"A3=";A3
+END
+}
+
+  program2 = %{
+REM *** SECOND PROGRAM
+REM
+FOR A = 1 TO 10
+ PRINT "A = ";A
+NEXT
+END
+}
+
+  program3 = %{
+REM *** THIRD PROGRAM - FIBONACCI 200
+REM
+A = 1
+B = 1
+PRINT "1, 1, ";
+FOR X = 1 TO 200
+ C = B
+ B = B + A
+ A = C
+ PRINT B;", ";
+ IF X % 10 = 0 THEN PRINT
+NEXT
+END
+}
+
   begin
-    p.line_do "LET A1 = 1"
-    p.line_do "A5 = 5"
-    p.line_do "A6 = 6"
-    p.line_do 'INPUT "Value for A9";A9'
-    p.line_do "A7 = A8"   # Test default value
-    p.line_do 'PRINT'
-    p.line_do 'PRINT "PI=";PI'
-    p.line_do 'PRINT "E=";E'
-    p.line_do 'PRINT "String 1"'
-    p.line_do "PRINT 'String 2'"
-    p.line_do "PRINT A1, A5"
-    p.line_do "PRINT A1; A6"
-    p.line_do "PRINT 'A1 = ';A1, 'A2 = ';A6, 'A9 = '; A9"
-    p.line_do "PRINT 'This should all be ';"
-    p.line_do "PRINT 'on the same line'"
-    p.line_do "PRINT 'This word',"
-    p.line_do "PRINT 'should have a tab after it'"
+    p.do_program program3
   rescue ParserError => e
     puts "SYNTAX ERROR: #{e}"
-  end
+  end  
   
-  puts p.inspect
+  puts "\n#{p.inspect}"
 end
-
