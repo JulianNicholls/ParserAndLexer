@@ -48,17 +48,17 @@ class Lexer
   RESERVED = %w{PRINT INPUT LET IF THEN FOR TO STEP NEXT END STOP REM}
   
   PATTERNS = {
-    /\A['"]/          => :collect_string,
-    /\A[\d\.]+/       => :collect_number,   # Must precede ident, \w includes \d
-    /\A\w+/           => :collect_ident,
-    /\A==?/           => :collect_equals,
-    /\A[!<>]=?/       => :collect_compare,
-    /\A[\+\-\*\/%]/   => :collect_operator,
-    /\A[\r\n][\n\r]*/ => :collect_eol,
-    /\A[\(\)]/        => :collect_bracket,
-    /\A[\[\]]/        => :collect_sqbracket,
-    /\A:/             => :collect_colon,
-    /\A[,;]/          => :collect_separator
+    /\A['"]/            => :collect_string,
+    /\A[\d\.]+/         => :collect_number,   # Must precede ident, \w includes \d
+    /\A\w+/             => :collect_ident,
+    /\A==?/             => :collect_equals,
+    /\A[!<>]=?/         => :collect_compare,
+    /\A[\+\-\*\/%\^]/   => :collect_operator,
+    /\A[\r\n]+/         => :collect_eol,
+    /\A[\(\)]/          => :collect_bracket,
+    /\A[\[\]]/          => :collect_sqbracket,
+    /\A:/               => :collect_colon,
+    /\A[,;]/            => :collect_separator
   }
   
   
@@ -197,7 +197,14 @@ private
       return collect_number mat2.to_s
     end
     
-    operators = { '-' => :minus, '+' => :plus, '*' => :multiply, '/' => :divide, '%' => :modulo }
+    operators = { 
+      '-' => :minus, 
+      '+' => :plus, 
+      '*' => :multiply, 
+      '/' => :divide, 
+      '%' => :modulo, 
+      '^' => :exponent
+    }
     
     Token.new operators[mat.to_s]
   end

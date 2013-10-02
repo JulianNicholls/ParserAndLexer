@@ -359,13 +359,33 @@ private
         expect [:br_close]
         
       when :integer, :float   then  value = t.value
-      when:ident              then  value = value_of( t.value )
+      when:ident              then  value = function t.value
         
       else
         raise ParserError.new( "Unexpected token in term: #{t}" )
     end
     
+# Take care of power expressions here. 
+
+    if @lexer.peek_next.type == :exponent
+      @lexer.next
+      value **= term
+    end
+    
     value
+  end
+  
+
+  #--------------------------------------------------------------------------
+  # Perform a function, or return the value of a variable
+  #--------------------------------------------------------------------------
+
+  def function name
+    case name
+      when  'COS'   then  Math::cos( term )
+      else
+        value_of name
+    end
   end
   
   
