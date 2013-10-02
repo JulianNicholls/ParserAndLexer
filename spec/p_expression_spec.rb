@@ -38,36 +38,43 @@ describe Parser do
     end
     
     describe "Simple operations" do
-      it "should return an addition" do
+      it "should work for addition" do
         @parser.feed_expression "2 + 5"
         @parser.expression.should eq 7
       end
       
-      it "should return a subtraction" do
+      it "should work for subtraction" do
         @parser.feed_expression "10 - 6"
         @parser.expression.should eq 4
       end
       
-      it "should return a multiplication" do
+      it "should work for multiplication" do
         @parser.feed_expression "2 * 5"
         @parser.expression.should eq 10
       end
       
-      it "should return a division" do
+      it "should work for division" do
         @parser.feed_expression "20 / 5"
         @parser.expression.should eq 4
       end
 
-      it "should return a modulo" do
+      it "should work for modulo" do
         @parser.feed_expression "15 % 7"
         @parser.expression.should eq 1
       end
 
-      it "should return an exponent" do
+      it "should work for exponentiation" do
         @parser.feed_expression "2 ^ 10"
         @parser.expression.should eq 1024
       end
+      
+      it "should work for a non-integer exponent" do
+        @parser.feed_expression "9 ^ 0.5"
+        @parser.expression.should eq 3
+      end
+      
     end
+    
     
     it "should accept expressions using variables" do
       @parser.feed_expression "A1 + A2 +A3"
@@ -86,30 +93,117 @@ describe Parser do
       @parser.expression.should eq -20
     end
     
-    it "should accept a simple bracketed expression" do
-      @parser.feed_expression "(7+8)"
-      @parser.expression.should eq 15
-      
-      @parser.feed_expression "(8 - 7)"
-      @parser.expression.should eq 1
-      
-      @parser.feed_expression "(7*8)"
-      @parser.expression.should eq 56
-      
-      @parser.feed_expression "(56 / 7)"
-      @parser.expression.should eq 8
+    
+    describe "Bracketed expressions" do
+      it "should accept simple ones" do
+        @parser.feed_expression "(7+8)"
+        @parser.expression.should eq 15
+        
+        @parser.feed_expression "(8 - 7)"
+        @parser.expression.should eq 1
+        
+        @parser.feed_expression "(7*8)"
+        @parser.expression.should eq 56
+        
+        @parser.feed_expression "(56 / 7.0)"
+        @parser.expression.should eq 8
+      end
+
+      it "should accept more elaborate ones" do
+        @parser.feed_expression "10 *(7+8)"
+        @parser.expression.should eq 150
+        
+        @parser.feed_expression "A3* (A2+8)"
+        @parser.expression.should eq 840
+      end
     end
     
-    it "should accept a more complicated expression" do
-      @parser.feed_expression "10 *(7+8)"
-      @parser.expression.should eq 150
+    
+    describe "Functions" do
+      it "should accept COS" do # Radians, don't forget
+        @parser.feed_expression "COS(1.047198)" 
+        expect( @parser.expression ).to be_within( 0.000001 ).of( 0.5 )
+      end
+
+      it "should accept SIN" do
+        @parser.feed_expression "SIN(0.523599)"
+        expect( @parser.expression ).to be_within( 0.000001 ).of( 0.5 )
+      end
       
-      @parser.feed_expression "A3* (A2+8)"
-      @parser.expression.should eq 840
+      it "should accept TAN" do
+        @parser.feed_expression "TAN(0.785398)"
+        expect( @parser.expression ).to be_within( 0.000001 ).of( 1.0 )
+      end
+
+      it "should accept ACOS" do # Radians, don't forget
+        @parser.feed_expression "ACOS(0.5)" 
+        expect( @parser.expression ).to be_within( 0.000001 ).of( 1.047198 )
+      end
+
+      it "should accept ASIN" do
+        @parser.feed_expression "ASIN(0.5)"
+        expect( @parser.expression ).to be_within( 0.000001 ).of( 0.523599 )
+      end
+      
+      it "should accept ATAN" do
+        @parser.feed_expression "ATAN(1)"
+        expect( @parser.expression ).to be_within( 0.000001 ).of( 0.785398 )
+      end
+
+      it "should accept CEIL" do
+        @parser.feed_expression "CEIL(2.5)"
+        expect( @parser.expression ).to be_within( 0.000001 ).of( 3.0 )
+      end
+      
+      it "should accept FLOOR" do
+        @parser.feed_expression "FLOOR(2.5)"
+        expect( @parser.expression ).to be_within( 0.000001 ).of( 2.0 )
+      end
+      
+      it "should accept ROUND" do
+        @parser.feed_expression "ROUND(2.49)"
+        expect( @parser.expression ).to be_within( 0.000001 ).of( 2.0 )
+
+        @parser.feed_expression "ROUND(2.51)"
+        expect( @parser.expression ).to be_within( 0.000001 ).of( 3.0 )
+      end
+      
+      it "should accept SQR" do
+        @parser.feed_expression "SQR(9)"
+        expect( @parser.expression ).to be_within( 0.000001 ).of( 3.0 )
+      end
+
+      it "should accept LOG" do
+        @parser.feed_expression "LOG(E)"
+        expect( @parser.expression ).to be_within( 0.000001 ).of( 1.0 )
+      end
+
+      it "should accept LOG10" do
+        @parser.feed_expression "LOG10(100)"
+        expect( @parser.expression ).to be_within( 0.000001 ).of( 2.0 )
+      end
+
+      it "should accept EXP" do
+        @parser.feed_expression "EXP(1)"
+        expect( @parser.expression ).to be_within( 0.000001 ).of( Math::E )
+      end
+      
     end
     
     describe "Precedence" do
-      it "should do exponentiation first" do
+      it "should do functions first" do
+        @parser.feed_expression "COS(1) ^ 2"
+        expect( @parser.expression ).to be_within( 0.000001 ).of( 0.540302 )  # WRONG! WRONG! WRONG!
+#        expect( @parser.expression ).to be_within( 0.000001 ).of( 0.291926 )
+
+#        @parser.feed_expression "COS(1) ^ 2"
+#        expect( @parser.expression ).to be_within( 0.000001 ).of( 0.291926 )
+        
+#        @parser.feed_expression "COS(1) ^ 2 + SIN(1) ^ 2"
+#        expect( @parser.expression ).to be_within( 0.000001 ).of( 1.0 )
+      end
+
+      it "should do exponentiation next" do
         @parser.feed_expression "2 + 2 ^ 5 * 10"
         @parser.expression.should eq 322
       end

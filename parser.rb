@@ -350,7 +350,7 @@ private
   # expression
   #--------------------------------------------------------------------------
 
-  def term
+  def term 
     t = @lexer.next
   
     case t.type
@@ -383,6 +383,22 @@ private
   def function name
     case name
       when  'COS'   then  Math::cos( term )
+      when  'SIN'   then  Math::sin( term )
+      when  'TAN'   then  Math::tan( term )
+    
+      when  'ACOS'  then  Math::acos( term )
+      when  'ASIN'  then  Math::asin( term )
+      when  'ATAN'  then  Math::atan( term )
+    
+      when  'CEIL'  then  term.ceil
+      when  'FLOOR' then  term.floor
+      when  'ROUND' then  term.round
+
+      when  'SQR'   then  Math::sqrt( term )
+      
+      when  'LOG'   then  Math::log( term )
+      when  'LOG10' then  Math::log10( term )
+      when  'EXP'   then  Math::exp( term )
       else
         value_of name
     end
