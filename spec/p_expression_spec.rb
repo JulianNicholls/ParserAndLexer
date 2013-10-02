@@ -98,6 +98,23 @@ describe Parser do
       @parser.feed_expression "A3* (A2+8)"
       @parser.expression.should eq 840
     end
+    
+    it "should have precedence reasonably correct" do
+      @parser.feed_expression "2 + 3 * 5"
+      @parser.expression.should eq 17   # NOT 25!
+      
+      @parser.feed_expression "3 * 2 + 3 * 5"
+      @parser.expression.should eq 21   # NOT 75
+      
+      @parser.feed_expression "3 * (2 + 3) * 5"
+      @parser.expression.should eq 75
+
+      @parser.feed_expression "20 - 10 / 2"
+      @parser.expression.should eq 15   # NOT 5
+      
+      @parser.feed_expression "30 / 2 - 40 / 5"
+      @parser.expression.should eq 7  # NOT -0.157...
+    end
   end
   
   describe "Exceptions" do

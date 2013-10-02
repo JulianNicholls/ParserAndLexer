@@ -12,6 +12,7 @@ describe Parser do
     @parser = Parser.new
   end
 
+  
   describe "Emptyness" do
     it "should not be allowed" do
       expect { @parser.line_do }.to raise_error( ParserError )
@@ -24,6 +25,7 @@ describe Parser do
       @parser.variables['A'].should eq 0
     end
   end
+
   
   describe ".do_assignment" do  # Each section checks that the previous variables are still set correctly
     it "should be able to set an integer" do
@@ -55,6 +57,16 @@ describe Parser do
       @parser.variables['A2'].should eq 1.5 
       @parser.variables['A3'].should eq 'a string' 
     end
+
+    it "should be able to set the value of an arithmetic expression" do
+      @parser.line_do "A6 = A2 * 10 + 5 - 3"
+      @parser.variables['A6'].should eq 17.0
+      
+      @parser.variables['A1'].should eq 1 
+      @parser.variables['A2'].should eq 1.5 
+      @parser.variables['A3'].should eq 'a string' 
+      @parser.variables['A4'].should eq 1.5 
+    end
     
     it "should use LET if it's present" do
       @parser.line_do "LET A5=5"      # No spaces
@@ -64,8 +76,10 @@ describe Parser do
       @parser.variables['A2'].should eq 1.5 
       @parser.variables['A3'].should eq 'a string' 
       @parser.variables['A4'].should eq 1.5 
+      @parser.variables['A6'].should eq 17.0
     end
   end
+
   
   describe ".do_print" do
     it "should work on its own to make a blank line" do
@@ -108,6 +122,14 @@ describe Parser do
       output.should eq "1.5\n"
     end    
 
+    it "should allow printing of expressions" do
+      output = capture_stdout do
+        @parser.line_do "PRINT (123 + 456) * 10"
+      end
+      
+      output.should eq "5790\n"
+    end    
+
     it "should use ; to put two items together" do
       output = capture_stdout do
         @parser.line_do "PRINT A2;A1"
@@ -140,6 +162,7 @@ describe Parser do
       output.should eq "1.5\t"
     end    
   end
+
   
   # These are only capturing stdout so that it doesn't pollute the results
 
@@ -164,8 +187,8 @@ describe Parser do
       end
       @parser.variables['A17'].should eq 23.67
     end
-    
   end
+  
   
   describe ".do_conditional" do
     it "should do the action when the conditional is true" do
@@ -182,6 +205,7 @@ describe Parser do
       @parser.variables['A4'].should eq 1.5 
     end
   end
+  
   
   describe "Malformed lines" do
     it "should raise an error for reserved word used as variable" do

@@ -10,11 +10,13 @@ describe Lexer do
     @lexer = Lexer.new
   end
 
+  
   describe "Emptyness" do
     it "should not be allowed" do
       expect { @lexer.next }.to raise_error( LexerError )
     end
   end
+  
   
   describe ".from" do
     it "should set the string to work on" do
@@ -22,6 +24,7 @@ describe Lexer do
       @lexer.str.should eq "12345 text"
     end
   end
+  
   
   describe "String Finder" do
     it "should find double-quoted strings" do
@@ -39,7 +42,8 @@ describe Lexer do
       expect { @lexer.next }.to raise_exception( LexerError )
     end
   end
-    
+  
+  
   describe "Number Finder" do
     it "should find integers" do
       @lexer.from "12345"
@@ -63,6 +67,7 @@ describe Lexer do
     end
   end
 
+  
   describe "Identifier Finder" do
     it "should find an identifier with just uppercase letters" do
       @lexer.from "VAR"
@@ -90,12 +95,14 @@ describe Lexer do
     end
   end
   
+  
   describe "Assignment Operator" do
     it "should be found" do
       @lexer.from "="
       @lexer.next.should == Token.new( :assign )
     end
   end
+  
   
   describe ".peek_next" do
     it "should return the next token, not suck it up, and leave it available for .next" do
@@ -123,6 +130,7 @@ describe Lexer do
       @lexer.next.should == Token.new( :integer, -1 )
     end    
   end
+  
   
   describe "Comparison Finder" do
     it "should find equality comparison" do
@@ -160,6 +168,7 @@ describe Lexer do
     end
   end
   
+  
   describe "Operator Finder" do
     it "should find the plus operator" do
       @lexer.from "+"
@@ -186,6 +195,7 @@ describe Lexer do
       @lexer.next.should == Token.new( :modulo )
     end
   end
+  
   
   describe "End of Line Finder" do
     it "should find the LF character" do
@@ -217,6 +227,7 @@ describe Lexer do
     end
   end
   
+  
   describe "Bracket Finder" do
     it "should find an opening bracket" do
       @lexer.from "("
@@ -239,6 +250,7 @@ describe Lexer do
     end
   end
   
+  
   describe "Delimiter Finder" do
     it "should find a colon" do
       @lexer.from ":"
@@ -255,6 +267,7 @@ describe Lexer do
       @lexer.next.should == Token.new( :separator, ',' )
     end
   end
+  
   
   describe "Reserved Word" do
     it "PRINT should be found" do

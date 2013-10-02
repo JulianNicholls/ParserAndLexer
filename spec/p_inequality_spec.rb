@@ -18,6 +18,7 @@ describe Parser do
     @parser.line_do "A2 = 20"
     @parser.line_do "A3 = 30"
   end
+  
 
   describe ".inequality" do
     it "should evaluate = as equals" do
