@@ -149,16 +149,24 @@ private
   
   
   #--------------------------------------------------------------------------
-  # Do a PRINT
+  # Do a PRINT. Now recognises expressions, rather than expecting simple 
+  # values.
   #--------------------------------------------------------------------------
 
   def do_print
     last, item = nil, nil
     
     loop do
-      item = expect [:string, :float, :integer, :ident, :separator, :eos, :eol]
+      item = @lexer.peek_next
+      
+      case item.type
+        when :eol, :eos           then  break
+        when :string, :separator  then  item = @lexer.next
+          
+        else
+          item = Token.new( :float, expression )
+      end    
 
-      break if item.type == :eos || item.type == :eol
       print_item item
       
       last = item
@@ -175,16 +183,18 @@ private
 
   def do_input
     item = nil
+    prompted = FALSE
     
     loop do
       item = expect [:string, :separator, :ident, :eos]
       break if item.type == :ident
       raise ParserError.new( "No variable specified for INPUT" ) if item.type == :eos
       
+      prompted = true
       print_item item
     end
       
-    print '? '
+    print '? ' unless prompted
     value = gets.chomp
     if value =~ /^[\d\.]+$/  # All digits
       value = (value.include? '.') ? value.to_f : value.to_i
@@ -342,17 +352,17 @@ private
 
   def term
     t = @lexer.next
-    
-    if t.type == :br_open
-      value = expression
-      
-      expect [:br_close]
-    elsif [:integer, :float].include? t.type
-      value = t.value
-    elsif t.type == :ident
-      value = value_of( t.value )
-    else
-      raise ParserError.new( "Unexpected token in term: #{t}" )
+  
+    case t.type
+      when :br_open
+        value = expression
+        expect [:br_close]
+        
+      when :integer, :float   then  value = t.value
+      when:ident              then  value = value_of( t.value )
+        
+      else
+        raise ParserError.new( "Unexpected token in term: #{t}" )
     end
     
     value
@@ -360,13 +370,13 @@ private
   
   
   #--------------------------------------------------------------------------
-  # Get the next line from the program
+  # Get the next line from the program, removing the previous one first
   #--------------------------------------------------------------------------
 
   def next_program_line
     if @line_re
       @program.slice! @line_re
-    else
+    else          # First line, set the re for next time
       @line_re = /\A(.*)[\n\r]+/
     end
     
@@ -404,10 +414,12 @@ private
   
   #--------------------------------------------------------------------------
   # Return the value of a stored variable
+  # Added a special variable (TI) which gives the current EPOCH
   #--------------------------------------------------------------------------
 
   def value_of name
-    @variables[name]
+    return @variables[name] unless name == "TI"
+    Time.now
   end
 
   #--------------------------------------------------------------------------
@@ -460,8 +472,35 @@ NEXT
 END
 }
 
+program4 = %{
+REM *** COS X ***
+REM
+INPUT "NUMBER OF TERMS: ";N
+INPUT "X IN DEGREES   : ";X1
+
+REM START = TI
+
+X = (X1*PI/180)
+X = X * X
+T=1
+C=1
+FOR I = 2 TO N * 2 STEP 2
+  T = -1 * T * X / ((I - 1) * I)
+  C = C + T
+NEXT I
+
+REM FINISH = TI
+
+PRINT
+PRINT "COS(";X1;") = ";C
+PRINT "*******************"
+REM PRINT "ELAPSED TIME: ";TI - TIM
+REM PRINT "*******************"
+
+}
+
   begin
-    p.do_program program3
+    p.do_program program4
   rescue ParserError => e
     puts "SYNTAX ERROR: #{e}"
   end  
