@@ -194,6 +194,11 @@ describe Lexer do
       @lexer.from "%"
       @lexer.next.should == Token.new( :modulo )
     end
+    
+    it "should find the exponent operator" do
+      @lexer.from "^"
+      @lexer.next.should == Token.new( :exponent )
+    end
   end
   
   

@@ -20,44 +20,53 @@ describe Parser do
   end
 
   describe ".expression" do
-    it "should simply return the value for an integer constant" do
-      @parser.feed_expression "25"
-      @parser.expression.should eq 25
-    end
+    describe "Simplest" do
+      it "should return an integer constant" do
+        @parser.feed_expression "25"
+        @parser.expression.should eq 25
+      end
 
-    it "should simply return the value for a float constant" do
-      @parser.feed_expression "25.5"
-      @parser.expression.should eq 25.5
+      it "should return a float constant" do
+        @parser.feed_expression "25.5"
+        @parser.expression.should eq 25.5
+      end
+      
+      it "should simply return the value for a variable" do
+        @parser.feed_expression "A1"
+        @parser.expression.should eq 10
+      end
     end
+    
+    describe "Simple operations" do
+      it "should return an addition" do
+        @parser.feed_expression "2 + 5"
+        @parser.expression.should eq 7
+      end
+      
+      it "should return a subtraction" do
+        @parser.feed_expression "10 - 6"
+        @parser.expression.should eq 4
+      end
+      
+      it "should return a multiplication" do
+        @parser.feed_expression "2 * 5"
+        @parser.expression.should eq 10
+      end
+      
+      it "should return a division" do
+        @parser.feed_expression "20 / 5"
+        @parser.expression.should eq 4
+      end
 
-    it "should simply return the value for a variable" do
-      @parser.feed_expression "A1"
-      @parser.expression.should eq 10
-    end
-    
-    it "should return the value for a simple addition" do
-      @parser.feed_expression "2 + 5"
-      @parser.expression.should eq 7
-    end
-    
-    it "should return the value for a simple subtraction" do
-      @parser.feed_expression "10 - 6"
-      @parser.expression.should eq 4
-    end
-    
-    it "should return the value for a simple multiplication" do
-      @parser.feed_expression "2 * 5"
-      @parser.expression.should eq 10
-    end
-    
-    it "should return the value for a simple division" do
-      @parser.feed_expression "20 / 5"
-      @parser.expression.should eq 4
-    end
+      it "should return a modulo" do
+        @parser.feed_expression "15 % 7"
+        @parser.expression.should eq 1
+      end
 
-    it "should return the value for a simple modulo" do
-      @parser.feed_expression "15 % 7"
-      @parser.expression.should eq 1
+      it "should return an exponent" do
+        @parser.feed_expression "2 ^ 10"
+        @parser.expression.should eq 1024
+      end
     end
     
     it "should accept expressions using variables" do
@@ -99,21 +108,27 @@ describe Parser do
       @parser.expression.should eq 840
     end
     
-    it "should have precedence reasonably correct" do
-      @parser.feed_expression "2 + 3 * 5"
-      @parser.expression.should eq 17   # NOT 25!
+    describe "Precedence" do
+      it "should do exponentiation first" do
+        @parser.feed_expression "2 + 2 ^ 5 * 10"
+        @parser.expression.should eq 322
+      end
       
-      @parser.feed_expression "3 * 2 + 3 * 5"
-      @parser.expression.should eq 21   # NOT 75
+      it "should do *, /, and % before + and -" do
+        @parser.feed_expression "2 + 3 * 5"
+        @parser.expression.should eq 17   # NOT 25!
       
-      @parser.feed_expression "3 * (2 + 3) * 5"
-      @parser.expression.should eq 75
+        @parser.feed_expression "3 * 2 + 3 * 5"
+        @parser.expression.should eq 21   # NOT 75
+      end
 
-      @parser.feed_expression "20 - 10 / 2"
-      @parser.expression.should eq 15   # NOT 5
-      
-      @parser.feed_expression "30 / 2 - 40 / 5"
-      @parser.expression.should eq 7  # NOT -0.157...
+      it "should allow bracketing to change it" do
+        @parser.feed_expression "3 * (2 + 3) * 5"
+        @parser.expression.should eq 75
+
+        @parser.feed_expression "(2 ^ 10) ^ 2"
+        @parser.expression.should eq 1048576
+      end
     end
   end
   
