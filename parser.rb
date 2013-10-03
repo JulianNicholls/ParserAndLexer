@@ -183,7 +183,7 @@ private
 
   def do_input
     item = nil
-    prompted = FALSE
+    prompted = false
     
     loop do
       item = expect [:string, :separator, :ident, :eos]
@@ -195,7 +195,7 @@ private
     end
       
     print '? ' unless prompted
-    value = gets.chomp
+    value = $stdin.gets.chomp
     if value =~ /^[\d\.]+$/  # All digits
       value = (value.include? '.') ? value.to_f : value.to_i
     end
@@ -473,8 +473,8 @@ private
   #--------------------------------------------------------------------------
 
   def value_of name
-    return @variables[name] unless name == "TI"
-    Time.now.to_f
+    return Time.now.to_f if name == "TI"
+    @variables[name]
   end
 
   #--------------------------------------------------------------------------
@@ -489,123 +489,15 @@ private
 end
 
 
-if __FILE__ == $0
+if __FILE__ == $0 && ARGV.count != 0
   p = Parser.new
-
-  program1 = %{
-REM *** FIRST PROGRAM
-REM
-LET A1 = 1
-A2 = 2
-A3 = A1 + A2
-PRINT "A1=";A1,"A2=";A2,"A3=";A3
-END
-}
-
-  program2 = %{
-REM *** SECOND PROGRAM
-REM
-FOR A = 1 TO 10
- PRINT "A = ";A
-NEXT
-END
-}
-
-  program3 = %{
-REM *** THIRD PROGRAM - FIBONACCI 200
-REM
-A = 1
-B = 1
-PRINT "1, 1, ";
-FOR X = 1 TO 200
- C = B
- B = B + A
- A = C
- PRINT B;", ";
- IF X % 10 = 0 THEN PRINT
-NEXT
-END
-}
-
-program4 = %{
-REM *** COS X ***
-REM
-INPUT "NUMBER OF TERMS: ";N
-INPUT "X IN DEGREES   : ";X1
-
-START = TI
-
-X = (X1*PI/180) ^ 2
-T=1
-C=1
-FOR I = 2 TO N * 2 STEP 2
-  T = -1 * T * X / ((I - 1) * I)
-  C = C + T
-NEXT I
-
-FINISH = TI
-
-PRINT
-PRINT "COS(";X1;") = ";C
-PRINT "*******************"
-PRINT "ELAPSED TIME: ";FINISH-START
-PRINT "*******************"
-}
-
-program5 = %{
-REM *** COS X PART 2 ***
-REM
-INPUT "X IN DEGREES   : ";X1
-
-X = (X1*PI/180) ^ 2
-T=1
-C=1
-VAL=COS(SQR(X))
-LOOPS=0
-FOR I = 2 TO 40 STEP 2
-  LOOPS = LOOPS + 1
-  T = -1 * T * X / ((I - 1) * I)
-  C = C + T
-  IF ABS(C-VAL) < 0.000001 THEN I=60
-NEXT I
-
-PRINT
-PRINT "Calculated COS(";X1;") = ";C
-PRINT "Built-in   COS(";X1;") = ";VAL
-PRINT "Terms: ";LOOPS
-PRINT "*******************"
-}
-
-program6 = %{
-REM *** TEST NESTED FOR LOOPS ***
-REM
-
-PRINT "    ";
-FOR I = 2 TO 12
-  IF I < 10 THEN PRINT " ";
-  PRINT " ";I;" ";
-NEXT
-
-PRINT
-
-FOR I = 2 TO 12
-  IF I < 10 THEN PRINT " ";
-  PRINT I;"  ";
-  FOR J = 2 TO 12
-    K = I * J
-    IF K < 10 THEN PRINT " ";
-    IF K < 100 THEN PRINT " ";
-    PRINT K;" ";
-  NEXT J
-  PRINT
-NEXT I
-}
-
+  
+  loaded = File.read( ARGV[0] )
+  
   begin
-    p.do_program program6
+    p.do_program loaded
   rescue ParserError => e
     puts "SYNTAX ERROR: #{e}"
   end  
   
-  puts "\n#{p.inspect}"
 end
