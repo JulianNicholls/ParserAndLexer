@@ -187,6 +187,13 @@ describe Parser do
       end
       expect( @parser.variables['A17'] ).to eq 23.67
     end
+
+    it "should allow for a prompt" do
+      capture_stdout do
+        feed_stdin( "23\n" ) { @parser.line_do "INPUT 'Enter A16: ';A16" }
+      end
+      expect( @parser.variables['A16'] ).to eq 23
+    end
   end
   
   
