@@ -1,0 +1,13 @@
+REM *** THIRD PROGRAM - FIBONACCI 200
+REM
+A = 1
+B = 1
+PRINT "1, 1, ";
+FOR X = 1 TO 200
+ C = B
+ B = B + A
+ A = C
+ PRINT B;", ";
+ IF X % 10 = 0 THEN PRINT
+NEXT
+END

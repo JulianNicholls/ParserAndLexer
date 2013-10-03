@@ -1,0 +1,7 @@
+REM *** FIRST PROGRAM
+REM
+LET A1 = 1
+A2 = 2
+A3 = A1 + A2
+PRINT "A1=";A1,"A2=";A2,"A3=";A3
+END
