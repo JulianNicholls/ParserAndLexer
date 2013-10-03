@@ -17,12 +17,12 @@ describe Parser do
     it "should not be allowed" do
       expect { @parser.line_do }.to raise_error( ParserError )
     end
-    it "should not be allowed" do
+    it "should not allow nil" do
       expect { @parser.line_do nil }.to raise_error( ParserError )
     end
     
     it "should return 0 for an unused variable" do
-      @parser.variables['A'].should eq 0
+      expect( @parser.variables['A'] ).to eq 0
     end
   end
 
@@ -30,53 +30,53 @@ describe Parser do
   describe ".do_assignment" do  # Each section checks that the previous variables are still set correctly
     it "should be able to set an integer" do
       @parser.line_do "A1=1\n"          # No spaces
-      @parser.variables['A1'].should eq 1 
+      expect( @parser.variables['A1'] ).to eq 1 
     end
 
     it "should be able to set a floating point value" do
       @parser.line_do "A2 =1.5"       # Space before
-      @parser.variables['A2'].should eq 1.5 
+      expect( @parser.variables['A2'] ).to eq 1.5 
       
-      @parser.variables['A1'].should eq 1 
+      expect( @parser.variables['A1'] ).to eq 1 
     end
 
     it "should be able to set a string" do
       @parser.line_do "A3= 'a string'" # Space after
-      @parser.variables['A3'].should eq 'a string' 
+      expect( @parser.variables['A3'] ).to eq 'a string' 
       
-      @parser.variables['A1'].should eq 1 
-      @parser.variables['A2'].should eq 1.5 
+      expect( @parser.variables['A1'] ).to eq 1 
+      expect( @parser.variables['A2'] ).to eq 1.5 
     end
 
     it "should be able to set the value of another variable" do
       @parser.line_do "A4 = A2"       # Space both
-      @parser.variables['A4'].should eq 1.5 
-      @parser.variables['A4'].should eq @parser.variables['A2'] # Redundant, really
+      expect( @parser.variables['A4'] ).to eq 1.5 
+      expect( @parser.variables['A4'] ).to eq @parser.variables['A2'] # Redundant, really
       
-      @parser.variables['A1'].should eq 1 
-      @parser.variables['A2'].should eq 1.5 
-      @parser.variables['A3'].should eq 'a string' 
+      expect( @parser.variables['A1'] ).to eq 1 
+      expect( @parser.variables['A2'] ).to eq 1.5 
+      expect( @parser.variables['A3'] ).to eq 'a string' 
     end
 
     it "should be able to set the value of an arithmetic expression" do
       @parser.line_do "A6 = A2 * 10 + 5 - 3"
-      @parser.variables['A6'].should eq 17.0
+      expect( @parser.variables['A6'] ).to eq 17.0
       
-      @parser.variables['A1'].should eq 1 
-      @parser.variables['A2'].should eq 1.5 
-      @parser.variables['A3'].should eq 'a string' 
-      @parser.variables['A4'].should eq 1.5 
+      expect( @parser.variables['A1'] ).to eq 1 
+      expect( @parser.variables['A2'] ).to eq 1.5 
+      expect( @parser.variables['A3'] ).to eq 'a string' 
+      expect( @parser.variables['A4'] ).to eq 1.5 
     end
     
     it "should use LET if it's present" do
       @parser.line_do "LET A5=5"      # No spaces
-      @parser.variables['A5'].should eq 5 
+      expect( @parser.variables['A5'] ).to eq 5 
       
-      @parser.variables['A1'].should eq 1 
-      @parser.variables['A2'].should eq 1.5 
-      @parser.variables['A3'].should eq 'a string' 
-      @parser.variables['A4'].should eq 1.5 
-      @parser.variables['A6'].should eq 17.0
+      expect( @parser.variables['A1'] ).to eq 1 
+      expect( @parser.variables['A2'] ).to eq 1.5 
+      expect( @parser.variables['A3'] ).to eq 'a string' 
+      expect( @parser.variables['A4'] ).to eq 1.5 
+      expect( @parser.variables['A6'] ).to eq 17.0
     end
   end
 
@@ -87,7 +87,7 @@ describe Parser do
         @parser.line_do "PRINT"
       end
       
-      output.should eq "\n"
+      expect( output ).to eq "\n"
     end
   
     it "should allow printing of strings" do
@@ -95,7 +95,7 @@ describe Parser do
         @parser.line_do "PRINT 'hello world'\n" # UGH!
       end
       
-      output.should eq "hello world\n"
+      expect( output ).to eq "hello world\n"
     end
     
     it "should allow printing of integers" do
@@ -103,7 +103,7 @@ describe Parser do
         @parser.line_do "PRINT 1234"
       end
       
-      output.should eq "1234\n"
+      expect( output ).to eq "1234\n"
     end
 
     it "should allow printing of floats" do
@@ -111,7 +111,7 @@ describe Parser do
         @parser.line_do "PRINT 123.456"
       end
       
-      output.should eq "123.456\n"
+      expect( output ).to eq "123.456\n"
     end    
 
     it "should allow printing of variables" do
@@ -119,7 +119,7 @@ describe Parser do
         @parser.line_do "PRINT A2"
       end
       
-      output.should eq "1.5\n"
+      expect( output ).to eq "1.5\n"
     end    
 
     it "should allow printing of expressions" do
@@ -127,7 +127,7 @@ describe Parser do
         @parser.line_do "PRINT (123 + 456) * 10"
       end
       
-      output.should eq "5790\n"
+      expect( output ).to eq "5790\n"
     end    
 
     it "should use ; to put two items together" do
@@ -135,7 +135,7 @@ describe Parser do
         @parser.line_do "PRINT A2;A1"
       end
       
-      output.should eq "1.51\n"
+      expect( output ).to eq "1.51\n"
     end    
 
     it "should use , to separate two items with a tab" do
@@ -143,7 +143,7 @@ describe Parser do
         @parser.line_do "PRINT A2,A1"
       end
       
-      output.should eq "1.5\t1\n"
+      expect( output ).to eq "1.5\t1\n"
     end    
 
     it "should use ; to not end a line with a line ending" do
@@ -151,7 +151,7 @@ describe Parser do
         @parser.line_do "PRINT A2;"
       end
       
-      output.should eq "1.5"
+      expect( output ).to eq "1.5"
     end    
     
     it "should use , to end a line with a tab but no line ending" do
@@ -159,7 +159,7 @@ describe Parser do
         @parser.line_do "PRINT A2,"
       end
       
-      output.should eq "1.5\t"
+      expect( output ).to eq "1.5\t"
     end    
   end
 
@@ -171,21 +171,21 @@ describe Parser do
       capture_stdout do
         feed_stdin( "word\n" ) { @parser.line_do "INPUT A15" }
       end
-      @parser.variables['A15'].should eq 'word'
+      expect( @parser.variables['A15'] ).to eq 'word'
     end
     
     it "should input an integer value" do
       capture_stdout do
         feed_stdin( "23\n" ) { @parser.line_do "INPUT A16" }
       end
-      @parser.variables['A16'].should eq 23
+      expect( @parser.variables['A16'] ).to eq 23
     end
 
     it "should input a floating point value" do
       capture_stdout do
         feed_stdin( "23.67\n" ) { @parser.line_do "INPUT A17" }
       end
-      @parser.variables['A17'].should eq 23.67
+      expect( @parser.variables['A17'] ).to eq 23.67
     end
   end
   
@@ -196,13 +196,13 @@ describe Parser do
         @parser.line_do "IF A4 == 1.5 THEN PRINT 'it is'\n"
       end
       
-      output.should eq "it is\n"
+      expect( output ).to eq "it is\n"
     end
     
     it "should not do the action when the conditional is false" do
-      @parser.variables['A4'].should eq 1.5 
+      expect( @parser.variables['A4'] ).to eq 1.5 
       @parser.line_do "IF A4 = 1.4 THEN A4 = 2"
-      @parser.variables['A4'].should eq 1.5 
+      expect( @parser.variables['A4'] ).to eq 1.5 
     end
   end
   
