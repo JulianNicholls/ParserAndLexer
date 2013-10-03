@@ -222,59 +222,64 @@ private
   # Do a FOR loop
   #--------------------------------------------------------------------------
 
-  def do_for                # FOR ...
-    var = expect [:ident]   # var ...
-    expect [:assign]        # = ...
-    start = expression      # 1 ...
-    expect [:TO]            # TO ...
-    finish = expression     # 10 ...
-    nt = @lexer.peek_next
-    step = 1
+  def do_for                        # FOR ...
+    var = expect( [:ident] ).value  # var ...
+    expect [:assign]                # = ...
+    start  = expression             # 1 ...
+    expect [:TO]                    # TO ...
+    finish = expression             # 10 ...
+    step   = 1
     
-    if nt.type == :STEP
-      @lexer.next   # Swallow step
-      step = expression
+    if @lexer.peek_next.type == :STEP  # STEP ...
+      @lexer.next   
+      step = expression     # 2
     end
 
-#    puts "FOR #{var.value} = #{start} TO #{finish} STEP #{step}"
-    cur   = start
+    # Mark our place in the program because we'll need to return here at the 
+    # top of each loop
+    
     place = @program.dup
+    @variables[var] = start
+    
+    # Top of the FOR loop
     
     loop do
-      if step < 0
-        break if cur < finish
+      if step < 0   # Counting down
+        break if value_of( var ) < finish
       else
-        break if cur > finish
+        break if value_of( var) > finish
       end
       
- #     print "  Checked"
+      # Return to the top of the loop
       
       @program = place.dup
-      @variables[var.value] = cur
       
       ret = nil
       
+      # Go round the loop until we reach our NEXT
+      
       loop do
         line = next_program_line
-  #      puts "  LINE: #{line[1]}"
-      
         ret  = line_do line[1]
         
-   #     puts "  RET: #{ret}"
         break if ret == :eos || ret == :NEXT || ret == :END
       end
       
       raise ParserError.new( "Missing NEXT" ) if ret == :eos
       break if ret == :END
       
-      # We got NEXT, so go around again
-      cur += step
+      # We got NEXT, so go around again, as long as the (optional) variable
+      # matches, if specified
+      
+      id = @lexer.next
+      raise ParserError.new( "NEXT WITHOUT FOR ERROR" ) if id.type == :ident && id.value != var
+      @variables[var] += step
     end
-    
   end
+
   
   #--------------------------------------------------------------------------
-  # Evaluate a comparison expression
+  # Evaluate a comparison expression, with a single = allowed for equality
   #--------------------------------------------------------------------------
 
   def inequality
@@ -355,8 +360,7 @@ private
   
     case t.type
       when :br_open
-        value = expression
-        expect [:br_close]
+        value = bracket_exp t     # We have already collected the (
         
       when :integer, :float   then  value = t.value
       when:ident              then  value = function t.value
@@ -375,6 +379,19 @@ private
     value
   end
   
+  
+  #--------------------------------------------------------------------------
+  # Evaluate a bracketed expression. Broken out from term, so that 
+  # precedence is correct.
+  #--------------------------------------------------------------------------
+
+  def bracket_exp( token = nil )
+    expect [:br_open] unless token
+    value = expression
+    expect [:br_close]
+
+    value
+  end
 
   #--------------------------------------------------------------------------
   # Perform a function, or return the value of a variable
@@ -382,23 +399,25 @@ private
 
   def function name
     case name
-      when  'COS'   then  Math::cos( term )
-      when  'SIN'   then  Math::sin( term )
-      when  'TAN'   then  Math::tan( term )
+      when  'COS'   then  Math::cos( bracket_exp )
+      when  'SIN'   then  Math::sin( bracket_exp )
+      when  'TAN'   then  Math::tan( bracket_exp )
     
-      when  'ACOS'  then  Math::acos( term )
-      when  'ASIN'  then  Math::asin( term )
-      when  'ATAN'  then  Math::atan( term )
+      when  'ACOS'  then  Math::acos( bracket_exp )
+      when  'ASIN'  then  Math::asin( bracket_exp )
+      when  'ATAN'  then  Math::atan( bracket_exp )
     
-      when  'CEIL'  then  term.ceil
-      when  'FLOOR' then  term.floor
-      when  'ROUND' then  term.round
+      when  'ABS'   then  bracket_exp.abs
+      when  'CEIL'  then  bracket_exp.ceil
+      when  'FLOOR' then  bracket_exp.floor
+      when  'ROUND' then  bracket_exp.round
 
-      when  'SQR'   then  Math::sqrt( term )
+      when  'SQR'   then  Math::sqrt( bracket_exp )
       
-      when  'LOG'   then  Math::log( term )
-      when  'LOG10' then  Math::log10( term )
-      when  'EXP'   then  Math::exp( term )
+      when  'LOG'   then  Math::log( bracket_exp )
+      when  'LOG10' then  Math::log10( bracket_exp )
+      when  'EXP'   then  Math::exp( bracket_exp )
+      
       else
         value_of name
     end
@@ -450,12 +469,12 @@ private
   
   #--------------------------------------------------------------------------
   # Return the value of a stored variable
-  # Added a special variable (TI) which gives the current EPOCH
+  # Added a special variable (TI) which gives the current epoch.
   #--------------------------------------------------------------------------
 
   def value_of name
     return @variables[name] unless name == "TI"
-    Time.now
+    Time.now.to_f
   end
 
   #--------------------------------------------------------------------------
@@ -514,10 +533,9 @@ REM
 INPUT "NUMBER OF TERMS: ";N
 INPUT "X IN DEGREES   : ";X1
 
-REM START = TI
+START = TI
 
-X = (X1*PI/180)
-X = X * X
+X = (X1*PI/180) ^ 2
 T=1
 C=1
 FOR I = 2 TO N * 2 STEP 2
@@ -525,18 +543,66 @@ FOR I = 2 TO N * 2 STEP 2
   C = C + T
 NEXT I
 
-REM FINISH = TI
+FINISH = TI
 
 PRINT
 PRINT "COS(";X1;") = ";C
 PRINT "*******************"
-REM PRINT "ELAPSED TIME: ";TI - TIM
-REM PRINT "*******************"
+PRINT "ELAPSED TIME: ";FINISH-START
+PRINT "*******************"
+}
 
+program5 = %{
+REM *** COS X PART 2 ***
+REM
+INPUT "X IN DEGREES   : ";X1
+
+X = (X1*PI/180) ^ 2
+T=1
+C=1
+VAL=COS(SQR(X))
+LOOPS=0
+FOR I = 2 TO 40 STEP 2
+  LOOPS = LOOPS + 1
+  T = -1 * T * X / ((I - 1) * I)
+  C = C + T
+  IF ABS(C-VAL) < 0.000001 THEN I=60
+NEXT I
+
+PRINT
+PRINT "Calculated COS(";X1;") = ";C
+PRINT "Built-in   COS(";X1;") = ";VAL
+PRINT "Terms: ";LOOPS
+PRINT "*******************"
+}
+
+program6 = %{
+REM *** TEST NESTED FOR LOOPS ***
+REM
+
+PRINT "    ";
+FOR I = 2 TO 12
+  IF I < 10 THEN PRINT " ";
+  PRINT " ";I;" ";
+NEXT
+
+PRINT
+
+FOR I = 2 TO 12
+  IF I < 10 THEN PRINT " ";
+  PRINT I;"  ";
+  FOR J = 2 TO 12
+    K = I * J
+    IF K < 10 THEN PRINT " ";
+    IF K < 100 THEN PRINT " ";
+    PRINT K;" ";
+  NEXT J
+  PRINT
+NEXT I
 }
 
   begin
-    p.do_program program4
+    p.do_program program6
   rescue ParserError => e
     puts "SYNTAX ERROR: #{e}"
   end  
