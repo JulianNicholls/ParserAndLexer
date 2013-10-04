@@ -17,6 +17,7 @@ describe Parser do
     it "should not be allowed" do
       expect { @parser.line_do }.to raise_error( ParserError )
     end
+    
     it "should not allow nil" do
       expect { @parser.line_do nil }.to raise_error( ParserError )
     end
@@ -130,37 +131,47 @@ describe Parser do
       expect( output ).to eq "5790\n"
     end    
 
-    it "should use ; to put two items together" do
+    it "should allow printing of a function" do
       output = capture_stdout do
-        @parser.line_do "PRINT A2;A1"
+        @parser.line_do "PRINT SQR(2)"
       end
       
-      expect( output ).to eq "1.51\n"
-    end    
-
-    it "should use , to separate two items with a tab" do
-      output = capture_stdout do
-        @parser.line_do "PRINT A2,A1"
-      end
-      
-      expect( output ).to eq "1.5\t1\n"
-    end    
-
-    it "should use ; to not end a line with a line ending" do
-      output = capture_stdout do
-        @parser.line_do "PRINT A2;"
-      end
-      
-      expect( output ).to eq "1.5"
+      expect( output ).to eq "1.4142135623730951\n"
     end    
     
-    it "should use , to end a line with a tab but no line ending" do
-      output = capture_stdout do
-        @parser.line_do "PRINT A2,"
-      end
+    describe "Separators" do
+      it "should use ; to put two items together" do
+        output = capture_stdout do
+          @parser.line_do "PRINT A2;A1"
+        end
+        
+        expect( output ).to eq "1.51\n"
+      end    
+
+      it "should use , to separate two items with a tab" do
+        output = capture_stdout do
+          @parser.line_do "PRINT A2,A1"
+        end
+        
+        expect( output ).to eq "1.5\t1\n"
+      end    
+
+      it "should use ; to not end a line with a line ending" do
+        output = capture_stdout do
+          @parser.line_do "PRINT A2;"
+        end
+        
+        expect( output ).to eq "1.5"
+      end    
       
-      expect( output ).to eq "1.5\t"
-    end    
+      it "should use , to end a line with a tab but no line ending" do
+        output = capture_stdout do
+          @parser.line_do "PRINT A2,"
+        end
+        
+        expect( output ).to eq "1.5\t"
+      end    
+    end
   end
 
   
@@ -171,6 +182,7 @@ describe Parser do
       capture_stdout do
         feed_stdin( "word\n" ) { @parser.line_do "INPUT A15" }
       end
+      
       expect( @parser.variables['A15'] ).to eq 'word'
     end
     
@@ -178,6 +190,7 @@ describe Parser do
       capture_stdout do
         feed_stdin( "23\n" ) { @parser.line_do "INPUT A16" }
       end
+      
       expect( @parser.variables['A16'] ).to eq 23
     end
 
@@ -185,6 +198,7 @@ describe Parser do
       capture_stdout do
         feed_stdin( "23.67\n" ) { @parser.line_do "INPUT A17" }
       end
+      
       expect( @parser.variables['A17'] ).to eq 23.67
     end
 
@@ -192,6 +206,7 @@ describe Parser do
       capture_stdout do
         feed_stdin( "23\n" ) { @parser.line_do "INPUT 'Enter A16: ';A16" }
       end
+      
       expect( @parser.variables['A16'] ).to eq 23
     end
   end

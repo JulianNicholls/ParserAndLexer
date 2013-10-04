@@ -89,7 +89,8 @@ class Lexer
 
   
   #----------------------------------------------------------------------------
-  # Get string to work from, making sure that we have a copy of it!
+  # Get string to work from, making sure that we have a copy of it rather than
+  # the original, because we are going to destructive things.
   #----------------------------------------------------------------------------
   
   def from string
@@ -99,7 +100,7 @@ class Lexer
 
   
   #----------------------------------------------------------------------------
-  # Return the next token, removing it from the string
+  # Return the next token, removing it from the string.
   #----------------------------------------------------------------------------
   
   def next
@@ -125,10 +126,14 @@ class Lexer
         end
       end
       
+      # No match
+      
       ret  = Token.new( :failed, @str )
       @str = ''
       return ret
     end
+    
+    # End of string
     
     Token.new :eos
   end

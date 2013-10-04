@@ -10,6 +10,7 @@ class Parser
   end
 end
 
+
 describe Parser do
 
   before :all do

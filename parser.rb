@@ -26,10 +26,15 @@ class Parser
     reset_variables
   end
 
+
+  #--------------------------------------------------------------------------
+  # Empty the variable hash, then put e and pi back in
+  #--------------------------------------------------------------------------
+
   def reset_variables
     @variables = Hash.new( 0 )
     
-    # Initialise PI and E
+    # Initialise pi and e
     
     @variables['PI'] = Math::PI
     @variables['E']  = Math::E  
@@ -47,10 +52,9 @@ class Parser
     @program = program.dup  # Make a copy
     @line_re = nil
 
-    while line = next_program_line
-#      puts "LINE: #{line.inspect}"
-      break if line_do( line[1] ) == :END
-    end
+    begin
+      line = next_program_line
+    end while line_do( line[1] ) != :END
   end
 
   
@@ -249,7 +253,7 @@ private
       if step < 0   # Counting down
         break if value_of( var ) < finish
       else
-        break if value_of( var) > finish
+        break if value_of( var ) > finish
       end
       
       # Return to the top of the loop
@@ -296,10 +300,11 @@ private
       when  :cmp_lte  then  (lhside <= rhside)
     end
   end
+  
 
   #--------------------------------------------------------------------------
-  # Evaluate an arithmetic expression, involving +, -, *, /, % (modulo)
-  # To come: ^ for exponentiation
+  # Evaluate an arithmetic expression, involving +, -, *, /, % (modulo), 
+  # ^ (exponentiation) and functions
   #--------------------------------------------------------------------------
 
   def expression
@@ -351,8 +356,8 @@ private
   
 
   #--------------------------------------------------------------------------
-  # Evaluate a single term (variable, number, bracketed expression) in an 
-  # expression
+  # Evaluate a single term: variable, number, bracketed expression, or 
+  # function in an expression. Exponentiation is also handled here.
   #--------------------------------------------------------------------------
 
   def term 
@@ -360,7 +365,7 @@ private
   
     case t.type
       when :br_open
-        value = bracket_exp t     # We have already collected the (
+        value = bracket_exp t     # We have already collected the '('
         
       when :integer, :float   then  value = t.value
       when :ident             then  value = function t.value
@@ -468,7 +473,7 @@ private
   
   
   #--------------------------------------------------------------------------
-  # Return the value of a stored variable
+  # Return the value of a stored variable.
   # Added a special variable (TI) which gives the current epoch.
   #--------------------------------------------------------------------------
 
@@ -476,6 +481,7 @@ private
     return Time.now.to_f if name == "TI"
     @variables[name]
   end
+  
 
   #--------------------------------------------------------------------------
   # Skip to the end of the current line or string

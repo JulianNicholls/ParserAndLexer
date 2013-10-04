@@ -10,6 +10,7 @@ class Parser
   end
 end
 
+
 describe Parser do
 
   before :all do
@@ -120,7 +121,7 @@ describe Parser do
     
     
     describe "Functions" do
-      it "should accept ABS" do # Radians, don't forget
+      it "should accept ABS" do
         @parser.feed_expression "ABS(2)" 
         expect( @parser.expression ).to be_within( 0.000001 ).of( 2.0 )
 
@@ -129,7 +130,7 @@ describe Parser do
       end
 
       it "should accept COS" do # Radians, don't forget
-        @parser.feed_expression "COS(1.047198)" 
+        @parser.feed_expression "COS(1.047198)"   # 60 degress in Radians
         expect( @parser.expression ).to be_within( 0.000001 ).of( 0.5 )
       end
 
@@ -197,7 +198,8 @@ describe Parser do
       end
       
     end
-    
+  
+  
     describe "Precedence" do
       it "should do functions first" do
         @parser.feed_expression "COS(1) ^ 2"
@@ -232,6 +234,7 @@ describe Parser do
       end
     end
   end
+  
   
   describe "Exceptions" do
     it "should be thrown for a missing right bracket" do
