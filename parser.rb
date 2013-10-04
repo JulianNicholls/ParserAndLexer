@@ -196,9 +196,11 @@ private
       
     print '? ' unless prompted
     value = $stdin.gets.chomp
+    
     if value =~ /^[\d\.]+$/  # All digits
       value = (value.include? '.') ? value.to_f : value.to_i
     end
+    
     @variables[item.value] = value
   end
 
@@ -258,12 +260,10 @@ private
       
       # Go round the loop until we reach our NEXT
       
-      loop do
+      begin
         line = next_program_line
         ret  = line_do line[1]
-        
-        break if ret == :eos || ret == :NEXT || ret == :END
-      end
+      end while ret != :eos && ret != :NEXT && ret != :END
       
       raise ParserError.new( "Missing NEXT" ) if ret == :eos
       break if ret == :END
@@ -363,7 +363,7 @@ private
         value = bracket_exp t     # We have already collected the (
         
       when :integer, :float   then  value = t.value
-      when:ident              then  value = function t.value
+      when :ident             then  value = function t.value
         
       else
         raise ParserError.new( "Unexpected token in term: #{t}" )

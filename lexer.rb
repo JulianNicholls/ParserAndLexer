@@ -61,7 +61,24 @@ class Lexer
     /\A[,;]/            => :collect_separator
   }
   
+  CMPS = { 
+    '!=' => :cmp_ne, 
+    '<'  => :cmp_lt, 
+    '<=' => :cmp_lte, 
+    '>'  => :cmp_gt, 
+    '>=' => :cmp_gte
+  }  
   
+  OPERATORS = { 
+    '-' => :minus, 
+    '+' => :plus, 
+    '*' => :multiply, 
+    '/' => :divide, 
+    '%' => :modulo, 
+    '^' => :exponent
+  }
+    
+
   #----------------------------------------------------------------------------
   # Initialise, potentially with a replaced set of reserved words
   #----------------------------------------------------------------------------
@@ -141,8 +158,7 @@ private
   #----------------------------------------------------------------------------
   
   def collect_compare mat
-    cmps = { '!=' => :cmp_ne, '<' => :cmp_lt, '<=' => :cmp_lte, '>' => :cmp_gt, '>=' => :cmp_gte }
-    Token.new cmps[mat.to_s]
+    Token.new CMPS[mat.to_s]
   end
 
   
@@ -197,16 +213,7 @@ private
       return collect_number mat2.to_s
     end
     
-    operators = { 
-      '-' => :minus, 
-      '+' => :plus, 
-      '*' => :multiply, 
-      '/' => :divide, 
-      '%' => :modulo, 
-      '^' => :exponent
-    }
-    
-    Token.new operators[mat.to_s]
+    Token.new OPERATORS[mat.to_s]
   end
 
   
@@ -222,7 +229,11 @@ private
     
     raise LexerError.new( "Invalid number encountered: #{str}" ) if str =~ /.*\..*\./
 
-    Token.new( is_f ? :float : :integer, is_f ? str.to_f : str.to_i  )
+    if is_f
+      Token.new( :float, str.to_f )
+    else
+      Token.new( :integer, str.to_i )
+    end
   end
   
   
@@ -232,6 +243,7 @@ private
   
   def collect_ident mat
     str = mat.to_s
+    
     if @reserved.include? str
       Token.new( str.to_sym )
     else
