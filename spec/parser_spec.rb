@@ -222,7 +222,6 @@ describe Parser do
     end
     
     it "should not do the action when the conditional is false" do
-      expect( @parser.variables['A4'] ).to eq 1.5 
       @parser.line_do "IF A4 = 1.4 THEN A4 = 2"
       expect( @parser.variables['A4'] ).to eq 1.5 
     end

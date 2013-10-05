@@ -14,6 +14,7 @@ BASIC, and is done far enough to run simple programs.
 * ARRAYS
 * File Operations: OPEN, CLOSE, INPUT#, PRINT#
 * INPUT of multiple variables on one line
+* AND, OR, NOT in conditionals
 
 
 ## Useful Parts

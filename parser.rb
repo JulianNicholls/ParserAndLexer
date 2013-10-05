@@ -49,12 +49,22 @@ class Parser
     
     reset_variables
     
-    @program = program.dup  # Make a copy
-    @line_re = nil
-
+    lines   = program.dup
+    line_re = /\A(.*)[\n\r]+/
+    
+    @program_lines, @num_lines  = [], 0
+    
     begin
-      line = next_program_line
-    end while line_do( line[1] ) != :END
+      line = line_re.match lines
+      @program_lines << line[1]
+      lines.slice! line_re
+      @num_lines += 1
+    end while !lines.empty?
+
+    @cur_line = 0
+    
+    while line_do( next_program_line ) != :END
+    end
   end
 
   
@@ -118,6 +128,7 @@ class Parser
   def inspect
     "#<Parser @line=\"#{@line}\" #@variables>"
   end
+  
   
 private
 
@@ -186,8 +197,8 @@ private
   #--------------------------------------------------------------------------
 
   def do_input
-    item = nil
-    prompted = false
+    item      = nil
+    prompted  = false
     
     loop do
       item = expect [:string, :separator, :ident, :eos]
@@ -218,8 +229,6 @@ private
     if inequality
       expect [:THEN]
       line_do
-    else
-      skip_to_end
     end
   end
   
@@ -244,7 +253,7 @@ private
     # Mark our place in the program because we'll need to return here at the 
     # top of each loop
     
-    place = @program.dup
+    place_line      = @cur_line
     @variables[var] = start
     
     # Top of the FOR loop
@@ -258,15 +267,14 @@ private
       
       # Return to the top of the loop
       
-      @program = place.dup
+      @cur_line = place_line
       
       ret = nil
       
       # Go round the loop until we reach our NEXT
       
       begin
-        line = next_program_line
-        ret  = line_do line[1]
+        ret  = line_do next_program_line
       end while ret != :eos && ret != :NEXT && ret != :END
       
       raise ParserError.new( "Missing NEXT" ) if ret == :eos
@@ -374,7 +382,7 @@ private
         raise ParserError.new( "Unexpected token in term: #{t}" )
     end
     
-# Take care of power expressions here. 
+    # Take care of power expressions here. 
 
     if @lexer.peek_next.type == :exponent
       @lexer.next
@@ -434,13 +442,13 @@ private
   #--------------------------------------------------------------------------
 
   def next_program_line
-    if @line_re
-      @program.slice! @line_re
-    else          # First line, set the re for next time
-      @line_re = /\A(.*)[\n\r]+/
-    end
+    return 'END' if @cur_line >= @num_lines
     
-    @line_re.match @program
+    line = @program_lines[@cur_line]
+    
+    @cur_line += 1
+    
+    line
   end
 
   
@@ -480,16 +488,6 @@ private
   def value_of name
     return Time.now.to_f if name == "TI"
     @variables[name]
-  end
-  
-
-  #--------------------------------------------------------------------------
-  # Skip to the end of the current line or string
-  #--------------------------------------------------------------------------
-
-  def skip_to_end
-    while !([:eos, :eol].include? @lexer.next.type)
-    end
   end
   
 end

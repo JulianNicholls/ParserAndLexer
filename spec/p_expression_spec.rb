@@ -121,82 +121,87 @@ describe Parser do
     
     
     describe "Functions" do
-      it "should accept ABS" do
-        @parser.feed_expression "ABS(2)" 
-        expect( @parser.expression ).to be_within( 0.000001 ).of( 2.0 )
+      describe "Trigonometric" do
+        it "should accept COS" do # Radians, don't forget
+          @parser.feed_expression "COS(1.047198)"   # 60 degress in Radians
+          expect( @parser.expression ).to be_within( 0.000001 ).of( 0.5 )
+        end
 
-        @parser.feed_expression "ABS(-2)" 
-        expect( @parser.expression ).to be_within( 0.000001 ).of( 2.0 )
-      end
+        it "should accept SIN" do
+          @parser.feed_expression "SIN(0.523599)"
+          expect( @parser.expression ).to be_within( 0.000001 ).of( 0.5 )
+        end
+        
+        it "should accept TAN" do
+          @parser.feed_expression "TAN(0.785398)"
+          expect( @parser.expression ).to be_within( 0.000001 ).of( 1.0 )
+        end
 
-      it "should accept COS" do # Radians, don't forget
-        @parser.feed_expression "COS(1.047198)"   # 60 degress in Radians
-        expect( @parser.expression ).to be_within( 0.000001 ).of( 0.5 )
-      end
+        it "should accept ACOS" do
+          @parser.feed_expression "ACOS(0.5)" 
+          expect( @parser.expression ).to be_within( 0.000001 ).of( 1.047198 )
+        end
 
-      it "should accept SIN" do
-        @parser.feed_expression "SIN(0.523599)"
-        expect( @parser.expression ).to be_within( 0.000001 ).of( 0.5 )
+        it "should accept ASIN" do
+          @parser.feed_expression "ASIN(0.5)"
+          expect( @parser.expression ).to be_within( 0.000001 ).of( 0.523599 )
+        end
+        
+        it "should accept ATAN" do
+          @parser.feed_expression "ATAN(1)"
+          expect( @parser.expression ).to be_within( 0.000001 ).of( 0.785398 )
+        end
       end
       
-      it "should accept TAN" do
-        @parser.feed_expression "TAN(0.785398)"
-        expect( @parser.expression ).to be_within( 0.000001 ).of( 1.0 )
+      describe "Rounding" do
+        it "should accept ABS" do
+          @parser.feed_expression "ABS(2)" 
+          expect( @parser.expression ).to be_within( 0.000001 ).of( 2.0 )
+
+          @parser.feed_expression "ABS(-2)" 
+          expect( @parser.expression ).to be_within( 0.000001 ).of( 2.0 )
+        end
+
+        it "should accept CEIL" do
+          @parser.feed_expression "CEIL(2.5)"
+          expect( @parser.expression ).to be_within( 0.000001 ).of( 3.0 )
+        end
+        
+        it "should accept FLOOR" do
+          @parser.feed_expression "FLOOR(2.5)"
+          expect( @parser.expression ).to be_within( 0.000001 ).of( 2.0 )
+        end
+        
+        it "should accept ROUND" do
+          @parser.feed_expression "ROUND(2.49)"
+          expect( @parser.expression ).to be_within( 0.000001 ).of( 2.0 )
+
+          @parser.feed_expression "ROUND(2.51)"
+          expect( @parser.expression ).to be_within( 0.000001 ).of( 3.0 )
+        end
       end
 
-      it "should accept ACOS" do
-        @parser.feed_expression "ACOS(0.5)" 
-        expect( @parser.expression ).to be_within( 0.000001 ).of( 1.047198 )
-      end
+      describe "Logarithmic" do
+        it "should accept SQR" do
+          @parser.feed_expression "SQR(9)"
+          expect( @parser.expression ).to be_within( 0.000001 ).of( 3.0 )
+        end
 
-      it "should accept ASIN" do
-        @parser.feed_expression "ASIN(0.5)"
-        expect( @parser.expression ).to be_within( 0.000001 ).of( 0.523599 )
-      end
-      
-      it "should accept ATAN" do
-        @parser.feed_expression "ATAN(1)"
-        expect( @parser.expression ).to be_within( 0.000001 ).of( 0.785398 )
-      end
+        it "should accept LOG" do
+          @parser.feed_expression "LOG(E)"
+          expect( @parser.expression ).to be_within( 0.000001 ).of( 1.0 )
+        end
 
-      it "should accept CEIL" do
-        @parser.feed_expression "CEIL(2.5)"
-        expect( @parser.expression ).to be_within( 0.000001 ).of( 3.0 )
-      end
-      
-      it "should accept FLOOR" do
-        @parser.feed_expression "FLOOR(2.5)"
-        expect( @parser.expression ).to be_within( 0.000001 ).of( 2.0 )
-      end
-      
-      it "should accept ROUND" do
-        @parser.feed_expression "ROUND(2.49)"
-        expect( @parser.expression ).to be_within( 0.000001 ).of( 2.0 )
+        it "should accept LOG10" do
+          @parser.feed_expression "LOG10(100)"
+          expect( @parser.expression ).to be_within( 0.000001 ).of( 2.0 )
+        end
 
-        @parser.feed_expression "ROUND(2.51)"
-        expect( @parser.expression ).to be_within( 0.000001 ).of( 3.0 )
+        it "should accept EXP" do
+          @parser.feed_expression "EXP(1)"
+          expect( @parser.expression ).to be_within( 0.000001 ).of( Math::E )
+        end
       end
-      
-      it "should accept SQR" do
-        @parser.feed_expression "SQR(9)"
-        expect( @parser.expression ).to be_within( 0.000001 ).of( 3.0 )
-      end
-
-      it "should accept LOG" do
-        @parser.feed_expression "LOG(E)"
-        expect( @parser.expression ).to be_within( 0.000001 ).of( 1.0 )
-      end
-
-      it "should accept LOG10" do
-        @parser.feed_expression "LOG10(100)"
-        expect( @parser.expression ).to be_within( 0.000001 ).of( 2.0 )
-      end
-
-      it "should accept EXP" do
-        @parser.feed_expression "EXP(1)"
-        expect( @parser.expression ).to be_within( 0.000001 ).of( Math::E )
-      end
-      
     end
   
   
@@ -223,6 +228,9 @@ describe Parser do
       
         @parser.feed_expression "3 * 2 + 3 * 5"
         expect( @parser.expression ).to eq 21   # NOT 75
+
+        @parser.feed_expression "3 * 2 + 5 % 3"
+        expect( @parser.expression ).to eq 8    # Not 2
       end
 
       it "should allow bracketing to change it" do
