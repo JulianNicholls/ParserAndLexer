@@ -1,4 +1,5 @@
 require './lexer'
+require './program'
 
 
 #----------------------------------------------------------------------------
@@ -49,21 +50,9 @@ class Parser
     
     reset_variables
     
-    lines   = program.dup
-    line_re = /\A(.*)[\n\r]+/
+    @program = Program.new program
     
-    @program_lines, @num_lines  = [], 0
-    
-    begin
-      line = line_re.match lines
-      @program_lines << line[1]
-      lines.slice! line_re
-      @num_lines += 1
-    end while !lines.empty?
-
-    @cur_line = 0
-    
-    while line_do( next_program_line ) != :END
+    while line_do( @program.next ) != :END
     end
   end
 
@@ -81,6 +70,7 @@ class Parser
     raise ParserError.new( "No input specified" ) if @line.nil?
     
     statement = @lexer.next
+    statement = @lexer.next if statement.type == :integer   # Line number, skip it
     
     case statement.type
       when :eos then return :eos    # May be expected, or not...
@@ -105,6 +95,8 @@ class Parser
       when :NEXT                    # End of FOR loop
         return :NEXT
         
+      when :GOTO                    # GOTO
+        do_goto
         
       when :STOP                    # Emergency stop, as I recall
         puts "STOPped"
@@ -253,7 +245,7 @@ private
     # Mark our place in the program because we'll need to return here at the 
     # top of each loop
     
-    place_line      = @cur_line
+    place_line      = @program.cur_line
     @variables[var] = start
     
     # Top of the FOR loop
@@ -267,14 +259,14 @@ private
       
       # Return to the top of the loop
       
-      @cur_line = place_line
+      @program.cur_line = place_line
       
       ret = nil
       
       # Go round the loop until we reach our NEXT
       
       begin
-        ret  = line_do next_program_line
+        ret  = line_do @program.next
       end while ret != :eos && ret != :NEXT && ret != :END
       
       raise ParserError.new( "Missing NEXT" ) if ret == :eos
@@ -289,6 +281,16 @@ private
     end
   end
 
+  
+  #--------------------------------------------------------------------------
+  # Do GOTO
+  #--------------------------------------------------------------------------
+
+  def do_goto
+    line = expect [:integer]
+    @program.goto line.value
+  end
+  
   
   #--------------------------------------------------------------------------
   # Evaluate a comparison expression, with a single = allowed for equality
@@ -437,20 +439,6 @@ private
   end
   
   
-  #--------------------------------------------------------------------------
-  # Get the next line from the program, removing the previous one first
-  #--------------------------------------------------------------------------
-
-  def next_program_line
-    return 'END' if @cur_line >= @num_lines
-    
-    line = @program_lines[@cur_line]
-    
-    @cur_line += 1
-    
-    line
-  end
-
   
   #--------------------------------------------------------------------------
   # Print one item (string, number, variable, separator)
