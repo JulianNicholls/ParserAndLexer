@@ -45,7 +45,7 @@ end
 
 class Lexer
  
-  RESERVED = %w{PRINT INPUT LET IF THEN FOR TO STEP NEXT END STOP REM}
+  RESERVED = %w{PRINT INPUT LET IF THEN FOR TO STEP NEXT END STOP REM GOTO GOSUB RETURN}
   
   PATTERNS = {
     /\A['"]/            => :collect_string,
