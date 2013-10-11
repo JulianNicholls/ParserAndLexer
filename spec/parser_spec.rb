@@ -14,19 +14,19 @@ describe Parser do
 
   
   describe "Emptyness" do
-    it "should not be allowed" do
-      expect { @parser.line_do }.to raise_error( ParserError )
+    it "should not be allowed in .do_program" do
+      expect { @parser.do_program '' }.to raise_error( ParserError )
     end
-    
-    it "should not allow nil" do
-      expect { @parser.line_do nil }.to raise_error( ParserError )
+
+    it "should not allow nil in .do_program" do
+      expect { @parser.do_program nil }.to raise_error( ParserError )
     end
     
     it "should return 0 for an unused variable" do
       expect( @parser.variables['A'] ).to eq 0
     end
   end
-
+  
   
   describe ".do_assignment" do  # Each section checks that the previous variables are still set correctly
     it "should be able to set an integer" do
@@ -79,6 +79,12 @@ describe Parser do
       expect( @parser.variables['A4'] ).to eq 1.5 
       expect( @parser.variables['A6'] ).to eq 17.0
     end
+  end
+
+  
+  it "should allow optional line numbers" do
+    @parser.line_do "100 LET A7=7"
+    expect( @parser.variables['A7'] ).to eq 7
   end
 
   
@@ -235,6 +241,10 @@ describe Parser do
 
     it "should raise an error for INPUT without a variable" do
       expect { capture_stdout { @parser.line_do "INPUT 'Prompt';" } }.to raise_error( ParserError )
+    end
+    
+    it "should raise an error for GOTO with a line number that doesn't exist" do
+      expect { @parser.do_program "GOTO 20\n30 REM OOPS\n" }.to raise_error( ParserError )
     end
   end
 end

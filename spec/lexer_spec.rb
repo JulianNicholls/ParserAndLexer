@@ -335,6 +335,21 @@ describe Lexer do
       @lexer.from "REM"
       expect( @lexer.next ).to eq Token.new( :REM )
     end
+
+    it "GOTO should be found" do
+      @lexer.from "GOTO 100"
+      expect( @lexer.next ).to eq Token.new( :GOTO )
+    end
+
+    it "GOSUB should be found" do
+      @lexer.from "GOSUB 1000"
+      expect( @lexer.next ).to eq Token.new( :GOSUB )
+    end
+
+    it "RETURN should be found" do
+      @lexer.from "RETURN"
+      expect( @lexer.next ).to eq Token.new( :RETURN )
+    end
   end
   
 end
