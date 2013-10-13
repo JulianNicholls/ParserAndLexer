@@ -9,13 +9,12 @@ BASIC, and is done far enough to run simple programs.
 * GOSUB / RETURN, and ON ... GOTO
 * DEF FN
 * PRINT TAB
-* READ and DATA
 * ARRAYS
 * File Operations: OPEN, CLOSE, INPUT#, PRINT#
 * INPUT of multiple variables on one line
 * AND, OR, NOT in conditionals
 
-GOTO is done in this version
+DATA, READ and RESTORE added in this version.
 
 
 ## Useful Parts
