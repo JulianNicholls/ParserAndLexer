@@ -23,8 +23,9 @@ class Program
     
   end
   
+  
   #--------------------------------------------------------------------------
-  # Get the next line from the program, removing the previous one first
+  # Get the next line from the program.
   #--------------------------------------------------------------------------
 
   def next
@@ -38,13 +39,38 @@ class Program
   end
 
   
-  def goto line_number 
-    line_index = 0
-    @lexer = Lexer.new
+  #--------------------------------------------------------------------------
+  # Return an array of DATA defined in the program
+  #--------------------------------------------------------------------------
+
+  def data
+    data_items = []
+    lexer = Lexer.new
     
     @lines.each do |line|
-      @lexer.from line
-      first = @lexer.next
+      lexer.from line
+      first = lexer.next
+      first = lexer.next if first.type == :integer  # Skip line number
+      if first.type == :DATA
+        data_items << lexer.collect_data
+      end
+    end
+    
+    data_items.flatten
+  end
+  
+  #--------------------------------------------------------------------------
+  # Perform a GOTO. Returns a ParserError if the requested line number is 
+  # not found.
+  #--------------------------------------------------------------------------
+
+  def goto line_number 
+    line_index = 0
+    lexer = Lexer.new
+    
+    @lines.each do |line|
+      lexer.from line
+      first = lexer.next
       if first.type == :integer && first.value == line_number
         @cur_line = line_index
         return

@@ -50,7 +50,9 @@ class Parser
     
     reset_variables
     
-    @program = Program.new program
+    @program    = Program.new program
+    @orig_data  = @program.data
+    @data       = @orig_data.dup
     
     while line_do( @program.next ) != :END
     end
@@ -75,7 +77,7 @@ class Parser
     case statement.type
       when :eos then return :eos    # May be expected, or not...
       
-      when :REM then return :eol    # Empty or comment line, ignore
+      when :REM, :DATA then return :eol # Empty or comment line, ignore
       
       when :LET, :ident             # Assignment with LET optional
         do_assignment statement
@@ -97,6 +99,12 @@ class Parser
         
       when :GOTO                    # GOTO
         do_goto
+        
+      when :READ                    # READ Data
+        do_read
+        
+      when :RESTORE                 # RESTORE
+        @data = @orig_data.dup
         
       when :STOP                    # Emergency stop, as I recall
         puts "STOPped"
@@ -290,7 +298,17 @@ private
     line = expect [:integer]
     @program.goto line.value
   end
+
   
+  #--------------------------------------------------------------------------
+  # Do READ
+  #--------------------------------------------------------------------------
+  
+  def do_read
+    var = expect [:ident]
+    
+    @variables[var.value] = @data.shift
+  end
   
   #--------------------------------------------------------------------------
   # Evaluate a comparison expression, with a single = allowed for equality

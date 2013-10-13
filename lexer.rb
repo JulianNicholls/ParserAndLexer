@@ -45,7 +45,7 @@ end
 
 class Lexer
  
-  RESERVED = %w{PRINT INPUT LET IF THEN FOR TO STEP NEXT END STOP REM GOTO GOSUB RETURN}
+  RESERVED = %w{PRINT INPUT LET IF THEN FOR TO STEP NEXT END STOP REM GOTO GOSUB RETURN READ DATA RESTORE}
   
   PATTERNS = {
     /\A['"]/            => :collect_string,
@@ -273,7 +273,27 @@ private
     Token.new( :string, mat2[1] )
   end
 
+  
+  #----------------------------------------------------------------------------
+  # Collect a list of comma separated values into an array
+  #----------------------------------------------------------------------------
 
+  def collect_data
+    result = []
+    
+    _next = self.next
+    
+    while _next.type != :eos
+      result << _next.value
+      comma = self.next
+      break if comma.type == :eos
+      _next = self.next
+    end
+    
+    result
+  end
+  
+  
   #----------------------------------------------------------------------------
   # Skip spaces and tabs and return EOS if there's no more to be had.
   #----------------------------------------------------------------------------

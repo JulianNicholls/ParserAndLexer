@@ -2,6 +2,8 @@ require_relative '../lexer'
 
 class Lexer
   attr_reader :str
+  
+  public :collect_data
 end
 
 describe Lexer do
@@ -274,6 +276,21 @@ describe Lexer do
   end
   
   
+  describe "DATA collector" do
+    it "should return an array of DATA" do
+      @lexer.from "DATA 1, 2, 3, 'string', 5"
+      expect( @lexer.next ).to eq Token.new( :DATA )
+      expect( @lexer.collect_data ).to eq [1, 2, 3, 'string', 5]
+    end
+
+    it "should return an array of DATA from a list with a dangling ," do
+      @lexer.from "DATA 1, 2, 3, 'string', 5,"
+      expect( @lexer.next ).to eq Token.new( :DATA )
+      expect( @lexer.collect_data ).to eq [1, 2, 3, 'string', 5]
+    end
+  end
+  
+  
   describe "Reserved Word" do
     it "PRINT should be found" do
       @lexer.from "PRINT"
@@ -349,6 +366,21 @@ describe Lexer do
     it "RETURN should be found" do
       @lexer.from "RETURN"
       expect( @lexer.next ).to eq Token.new( :RETURN )
+    end
+
+    it "READ should be found" do
+      @lexer.from "READ"
+      expect( @lexer.next ).to eq Token.new( :READ )
+    end
+
+    it "DATA should be found" do
+      @lexer.from "DATA"
+      expect( @lexer.next ).to eq Token.new( :DATA )
+    end
+
+    it "RESTORE should be found" do
+      @lexer.from "RESTORE"
+      expect( @lexer.next ).to eq Token.new( :RESTORE )
     end
   end
   
