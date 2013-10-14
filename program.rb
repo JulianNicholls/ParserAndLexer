@@ -28,7 +28,7 @@ class Program
   # Get the next line from the program.
   #--------------------------------------------------------------------------
 
-  def next
+  def next_line
     return 'END' if @cur_line >= @num_lines
     
     line = @lines[@cur_line]

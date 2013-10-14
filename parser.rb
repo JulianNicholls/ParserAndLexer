@@ -40,6 +40,7 @@ class Parser
     @variables['PI'] = Math::PI
     @variables['E']  = Math::E  
   end
+
   
   #--------------------------------------------------------------------------
   # Do a whole program with lines separated by EOL characters
@@ -54,7 +55,7 @@ class Parser
     @orig_data  = @program.data
     @data       = @orig_data.dup
     
-    while line_do( @program.next ) != :END
+    while line_do( @program.next_line ) != :END
     end
   end
 
@@ -77,7 +78,7 @@ class Parser
     case statement.type
       when :eos then return :eos    # May be expected, or not...
       
-      when :REM, :DATA then return :eol # Empty or comment line, ignore
+      when :REM, :DATA then return :eol # Empty, comment, or DATA line, so ignore
       
       when :LET, :ident             # Assignment with LET optional
         do_assignment statement
@@ -139,8 +140,8 @@ class Parser
 private
 
   #--------------------------------------------------------------------------
-  # Temporary function to ignore lines not understood, which is most of them
-  # at the moment
+  # Temporary function to ignore lines not understood. There's not much to
+  # finish now.
   #--------------------------------------------------------------------------
 
   def do_ignore
@@ -152,20 +153,16 @@ private
   # Perform an assignment, optionally led in by LET.
   #--------------------------------------------------------------------------
 
-  def do_assignment statement
-    if statement.type == :LET
-      ident = (expect [:ident]).value
-    else
-      ident = statement.value
-    end
+  def do_assignment leadin
+    ident = (leadin.type == :LET) ? (expect [:ident]).value : leadin.value
     
     expect [:assign]
 
-    if @lexer.peek_next.type == :string
-      @variables[ident] = @lexer.next.value
-    else
-      @variables[ident] = expression
-    end
+    @variables[ident] = if @lexer.peek_next_type == :string
+        @lexer.next.value
+      else
+        expression
+      end
   end
   
   
@@ -178,9 +175,9 @@ private
     last, item = nil, nil
     
     loop do
-      item = @lexer.peek_next
+      item = @lexer.peek_next_type
       
-      case item.type
+      case item
         when :eol, :eos           then  break
         when :string, :separator  then  item = @lexer.next
           
@@ -251,8 +248,8 @@ private
     finish = expression             # 10 ...
     step   = 1
     
-    if @lexer.peek_next.type == :STEP  # STEP ...
-      @lexer.next   
+    if @lexer.peek_next_type == :STEP  # STEP ...
+      @lexer.skip
       step = expression     # 2
     end
 
@@ -280,7 +277,7 @@ private
       # Go round the loop until we reach our NEXT
       
       begin
-        ret  = line_do @program.next
+        ret  = line_do @program.next_line
       end while ret != :eos && ret != :NEXT && ret != :END
       
       raise ParserError.new( "Missing NEXT" ) if ret == :eos
@@ -305,7 +302,7 @@ private
     do_goto
     
     begin
-      ret = line_do @program.next
+      ret = line_do @program.next_line
     end while ret != :eos && ret != :RETURN && ret != :END
     
     @program.cur_line = place_line if ret == :RETURN
@@ -360,9 +357,9 @@ private
   def expression
     part1 = factor
     
-    t = @lexer.peek_next
+    t = @lexer.peek_next_type
     
-    while [:plus, :minus].include? t.type
+    while [:plus, :minus].include? t
       t     = @lexer.next
       part2 = factor
       
@@ -372,7 +369,7 @@ private
         part1 -= part2
       end
       
-      t = @lexer.peek_next
+      t = @lexer.peek_next_type
     end
     
     part1
@@ -386,9 +383,9 @@ private
   def factor
     factor1 = term
     
-    t = @lexer.peek_next
+    t = @lexer.peek_next_type
     
-    while [:multiply, :divide, :modulo].include? t.type
+    while [:multiply, :divide, :modulo].include? t
       t       = @lexer.next
       factor2 = term
       
@@ -398,7 +395,7 @@ private
         when :modulo    then  factor1 = factor1.modulo factor2
       end
 
-      t = @lexer.peek_next
+      t = @lexer.peek_next_type
     end
     
     factor1
@@ -426,8 +423,8 @@ private
     
     # Take care of power expressions here. 
 
-    if @lexer.peek_next.type == :exponent
-      @lexer.next
+    if @lexer.peek_next_type == :exponent
+      @lexer.skip
       value **= term
     end
     

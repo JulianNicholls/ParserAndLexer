@@ -45,7 +45,10 @@ end
 
 class Lexer
  
-  RESERVED = %w{PRINT INPUT LET IF THEN FOR TO STEP NEXT END STOP REM GOTO GOSUB RETURN READ DATA RESTORE}
+  RESERVED = %w{
+    PRINT INPUT LET IF THEN FOR TO STEP NEXT END STOP REM GOTO GOSUB RETURN 
+    READ DATA RESTORE
+  }
   
   PATTERNS = {
     /\A['"]/            => :collect_string,
@@ -110,10 +113,24 @@ class Lexer
     ret
   end
 
+
+  #----------------------------------------------------------------------------
+  # Skip the next token, (peeked at already)
+  #----------------------------------------------------------------------------
+  
+  def skip
+    @str.slice! @last_re if peek_next_type != :eos
+  end
+  
   
   #----------------------------------------------------------------------------
   # Return the next token non-destructively
   #----------------------------------------------------------------------------
+  
+  def peek_next_type
+    peek_next.type
+  end
+  
   
   def peek_next
     raise LexerError.new( "No string specified" ) if @str.nil?
@@ -137,7 +154,8 @@ class Lexer
     
     Token.new :eos
   end
-  
+
+
 private
 
   #----------------------------------------------------------------------------
@@ -249,11 +267,7 @@ private
   def collect_ident mat
     str = mat.to_s
     
-    if @reserved.include? str
-      Token.new( str.to_sym )
-    else
-      Token.new( :ident, str )
-    end
+    @reserved.include?( str ) ? Token.new( str.to_sym ) : Token.new( :ident, str )
   end
 
   
