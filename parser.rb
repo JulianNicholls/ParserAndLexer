@@ -97,8 +97,14 @@ class Parser
       when :NEXT                    # End of FOR loop
         return :NEXT
         
-      when :GOTO                    # GOTO
+      when :GOTO                    # GOTO <LineNumber>
         do_goto
+        
+      when :GOSUB                   # GOSUB <LineNumber>
+        do_gosub
+        
+      when :RETURN                  # RETURN from subroutine
+        return :RETURN
         
       when :READ                    # READ Data
         do_read
@@ -289,6 +295,22 @@ private
     end
   end
 
+  
+  #--------------------------------------------------------------------------
+  # Do GOSUB
+  #--------------------------------------------------------------------------
+  
+  def do_gosub
+    place_line = @program.cur_line
+    do_goto
+    
+    begin
+      ret = line_do @program.next
+    end while ret != :eos && ret != :RETURN && ret != :END
+    
+    @program.cur_line = place_line if ret == :RETURN
+  end
+  
   
   #--------------------------------------------------------------------------
   # Do GOTO

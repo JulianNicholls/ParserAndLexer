@@ -41,13 +41,13 @@ END
     it "should be obeyed" do
       output = capture_stdout do
         @parser.do_program %{
-          10 PRINT "LINE 10"
-          20 GOTO 40
-          25 END
-          30 PRINT "LINE 30"
-          40 PRINT "LINE 40"
-          50 GOTO 25
-          60 PRINT "LINE 60"
+10 PRINT "LINE 10"
+20 GOTO 40
+25 END
+30 PRINT "LINE 30"
+40 PRINT "LINE 40"
+50 GOTO 25
+60 PRINT "LINE 60"
 }        
       end
       
@@ -94,6 +94,38 @@ PRINT "PAST DATA"
       end
       
       expect( output ).to eq "10, 20, 30, 35, 40, \n10, 20, 30, 35, 40, \nPAST DATA\n"
+    end
+  end
+  
+  describe "GOSUB" do
+    it "should work as GOTO" do
+      output = capture_stdout do
+        @parser.do_program %{
+10 PRINT "LINE 10"
+20 GOSUB 40
+30 PRINT "LINE 30"
+40 PRINT "LINE 40"
+}    
+      end
+      
+      expect( output ).to eq "LINE 10\nLINE 40\n"
+    end
+  end
+  
+  describe "RETURN" do
+    it "should work to return from GOSUB" do
+      output = capture_stdout do
+        @parser.do_program %{
+10 PRINT "LINE 10"
+20 GOSUB 40
+30 PRINT "LINE 30"
+35 END
+40 PRINT "LINE 40"
+50 RETURN
+}    
+      end
+      
+      expect( output ).to eq "LINE 10\nLINE 40\nLINE 30\n"
     end
   end
 end

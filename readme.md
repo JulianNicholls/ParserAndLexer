@@ -6,7 +6,7 @@ BASIC, and is done far enough to run simple programs.
 
 ## Significant parts of BASIC not done
 
-* GOSUB / RETURN, and ON ... GOTO
+* ON ... GOTO
 * DEF FN
 * PRINT TAB
 * ARRAYS
@@ -14,7 +14,7 @@ BASIC, and is done far enough to run simple programs.
 * INPUT of multiple variables on one line
 * AND, OR, NOT in conditionals
 
-DATA, READ and RESTORE added in this version.
+GOSUB / RETURN done in this version
 
 
 ## Useful Parts
