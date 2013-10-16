@@ -1,7 +1,7 @@
 # BasicParser
 
 There is a parser and its associated lexer. The parser is nominally for 
-BASIC, and is done far enough to run simple programs.
+BASIC, and is done far enough to run reasonably complicated programs.
 
 
 ## Significant parts of BASIC not done
@@ -12,9 +12,8 @@ BASIC, and is done far enough to run simple programs.
 * ARRAYS
 * File Operations: OPEN, CLOSE, INPUT#, PRINT#
 * INPUT of multiple variables on one line
-* AND, OR, NOT in conditionals
 
-GOSUB / RETURN done in this version
+AND, OR, NOT in conditionals done in this version
 
 
 ## Useful Parts

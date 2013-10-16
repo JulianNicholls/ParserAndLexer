@@ -47,7 +47,7 @@ class Lexer
  
   RESERVED = %w{
     PRINT INPUT LET IF THEN FOR TO STEP NEXT END STOP REM GOTO GOSUB RETURN 
-    READ DATA RESTORE
+    READ DATA RESTORE AND OR NOT
   }
   
   PATTERNS = {
@@ -115,7 +115,7 @@ class Lexer
 
 
   #----------------------------------------------------------------------------
-  # Skip the next token, (peeked at already)
+  # Skip the next token, (peeked at already, most likely)
   #----------------------------------------------------------------------------
   
   def skip
@@ -124,7 +124,7 @@ class Lexer
   
   
   #----------------------------------------------------------------------------
-  # Return the next token non-destructively
+  # Return the next token (or just its type) non-destructively
   #----------------------------------------------------------------------------
   
   def peek_next_type
@@ -143,7 +143,8 @@ class Lexer
         end
       end
       
-      # No match
+      # No match, more or less impossible since an ident match will mop up 
+      # almost anything
       
       ret  = Token.new( :failed, @str )
       @str = ''
@@ -335,6 +336,8 @@ private
   end
 end
 
+
+#----------------------------------------------------------------------------
 
 if $0 == __FILE__
 def render_loop lex

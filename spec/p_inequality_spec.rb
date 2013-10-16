@@ -89,5 +89,14 @@ describe Parser do
       @parser.feed_inequality "2 <= 1"
       expect( @parser.inequality ).to eq false
     end
+    
+    it "should accept NOT" do
+      @parser.feed_inequality "NOT 2 < 1"           # False negated
+      expect( @parser.inequality ).to eq true
+
+      @parser.feed_inequality "NOT 1 < 2"           # True negated
+      expect( @parser.inequality ).to eq false
+    end
+
   end
 end

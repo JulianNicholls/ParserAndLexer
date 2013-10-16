@@ -46,12 +46,13 @@ class Parser
   # Do a whole program with lines separated by EOL characters
   #--------------------------------------------------------------------------
   
-  def do_program program
-    raise ParserError.new( "empty program specified" ) if program.nil? || program.empty?
+  def do_program program_text
+    raise ParserError.new( "empty program specified" ) \
+      if program_text.nil? || program_text.empty?
     
     reset_variables
     
-    @program    = Program.new program
+    @program    = Program.new program_text
     @orig_data  = @program.data
     @data       = @orig_data.dup
     
@@ -200,8 +201,7 @@ private
   #--------------------------------------------------------------------------
 
   def do_input
-    item      = nil
-    prompted  = false
+    item, prompted = nil, false
     
     loop do
       item = expect [:string, :separator, :ident, :eos]
@@ -215,7 +215,7 @@ private
     print '? ' unless prompted
     value = $stdin.gets.chomp
     
-    if value =~ /^[\d\.]+$/  # All digits
+    if value =~ /^[\d\.]+$/  # All digits (and decimal point)
       value = (value.include? '.') ? value.to_f : value.to_i
     end
     
@@ -229,7 +229,26 @@ private
   #--------------------------------------------------------------------------
 
   def do_conditional
-    if inequality
+    dc1 = inequality
+    
+    t = @lexer.peek_next_type
+    
+    while [:AND, :OR].include? t 
+      @lexer.skip
+      
+      # The rhs has to be evaluated here because of short-circuiting
+      
+      rhs = inequality
+      
+      case t
+        when :AND   then dc1 = (dc1 && rhs)
+        when :OR    then dc1 = (dc1 || rhs)
+      end
+      
+      t = @lexer.peek_next_type
+    end
+
+    if dc1
       expect [:THEN]
       line_do
     end
@@ -334,18 +353,27 @@ private
   #--------------------------------------------------------------------------
 
   def inequality
+    negate = false
+    
+    if @lexer.peek_next_type == :NOT
+      @lexer.skip
+      negate = true
+    end
+    
     lhside = expression
     cmp    = expect [:assign, :cmp_eq, :cmp_ne, :cmp_gt, :cmp_gte, :cmp_lt, :cmp_lte]
     rhside = expression
     
-    case cmp.type
+    truth = case cmp.type
       when  :cmp_eq, :assign then  (lhside == rhside)
-      when  :cmp_ne   then  (lhside != rhside)
-      when  :cmp_gt   then  (lhside > rhside)
-      when  :cmp_gte  then  (lhside >= rhside)
-      when  :cmp_lt   then  (lhside < rhside)
-      when  :cmp_lte  then  (lhside <= rhside)
+      when  :cmp_ne     then  (lhside != rhside)
+      when  :cmp_gt     then  (lhside > rhside)
+      when  :cmp_gte    then  (lhside >= rhside)
+      when  :cmp_lt     then  (lhside < rhside)
+      when  :cmp_lte    then  (lhside <= rhside)
     end
+    
+    negate ? !truth : truth
   end
   
 
@@ -360,13 +388,12 @@ private
     t = @lexer.peek_next_type
     
     while [:plus, :minus].include? t
-      t     = @lexer.next
-      part2 = factor
+      @lexer.skip
       
-      if t.type == :plus
-        part1 += part2
+      if t == :plus
+        part1 += factor
       else
-        part1 -= part2
+        part1 -= factor
       end
       
       t = @lexer.peek_next_type
@@ -386,13 +413,12 @@ private
     t = @lexer.peek_next_type
     
     while [:multiply, :divide, :modulo].include? t
-      t       = @lexer.next
-      factor2 = term
+      @lexer.skip
       
-      case t.type
-        when :multiply  then  factor1 *= factor2
-        when :divide    then  factor1 /= factor2
-        when :modulo    then  factor1 = factor1.modulo factor2
+      case t
+        when :multiply  then  factor1 *= term
+        when :divide    then  factor1 /= term
+        when :modulo    then  factor1 = factor1.modulo term
       end
 
       t = @lexer.peek_next_type
@@ -498,7 +524,7 @@ private
   def expect options
     this = @lexer.next
     
-    raise ParserError.new( "Unxexpected <#{this}> in #@line." ) \
+    raise ParserError.new( "Unxexpected <#{this}> in #@line. (Valid: #{options.inspect})" ) \
       unless options.include? this.type
     
     this

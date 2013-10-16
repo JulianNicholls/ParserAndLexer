@@ -2,10 +2,6 @@ require_relative '../parser.rb'
 
 require 'spec_helper.rb'
 
-class Parser
-  attr_reader :variables
-end
-
 
 describe Parser do
 
@@ -64,7 +60,8 @@ FOR I = 1 TO 10
   PRINT J;", ";
 NEXT
 PRINT
-DATA 10, 20, 30, 35, 40, 50, 55, 60, 70, 80 
+DATA 10, 20, 30, 35, 40, 
+DATA 50, 55, 60, 70, 80 
 PRINT "PAST DATA"
 }    
       end

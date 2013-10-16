@@ -231,6 +231,45 @@ describe Parser do
       @parser.line_do "IF A4 = 1.4 THEN A4 = 2"
       expect( @parser.variables['A4'] ).to eq 1.5 
     end
+    
+    it "should accept 2-part AND" do
+      @parser.variables['A_AND'] = 1
+      @parser.line_do "IF 1 <= 2 AND 2 <= 3 THEN A_AND = 2"   # Both true
+      expect( @parser.variables['A_AND'] ).to eq 2
+
+      @parser.line_do "IF 1 <= 2 AND 3 <= 2 THEN A_AND = 3"   # Right false
+      expect( @parser.variables['A_AND'] ).to eq 2
+      
+      @parser.line_do "IF 1 >= 2 AND 2 <= 3 THEN A_AND = 4"   # Left false
+      expect( @parser.variables['A_AND'] ).to eq 2
+      
+      @parser.line_do "IF 1 >= 2 AND 2 >= 3 THEN A_AND = 5"   # Both false
+      expect( @parser.variables['A_AND'] ).to eq 2
+    end
+
+    it "should accept 3-part AND" do
+      @parser.line_do "IF 1 <= 2 AND 2 <= 3 AND 3 <= 4 THEN A_AND = 6"   # All true
+      expect( @parser.variables['A_AND'] ).to eq 6
+    end
+
+    it "should accept 2-part OR" do
+      @parser.line_do "IF 1 <= 2 OR 2 <= 3 THEN A_AND = 3"   # Both true
+      expect( @parser.variables['A_AND'] ).to eq 3
+
+      @parser.line_do "IF 1 <= 2 OR 3 <= 2 THEN A_AND = 4"   # Right false
+      expect( @parser.variables['A_AND'] ).to eq 4
+      
+      @parser.line_do "IF 1 >= 2 OR 2 <= 3 THEN A_AND = 5"   # Left false
+      expect( @parser.variables['A_AND'] ).to eq 5
+      
+      @parser.line_do "IF 1 >= 2 OR 2 >= 3 THEN A_AND = 6"   # Both false
+      expect( @parser.variables['A_AND'] ).to eq 5
+    end
+    
+    it "should accept 3-part OR" do
+      @parser.line_do "IF 1 >= 2 OR 2 >= 3 OR 3 <= 4 THEN A_AND = 9"   # Last true
+      expect( @parser.variables['A_AND'] ).to eq 9
+    end
   end
   
   
