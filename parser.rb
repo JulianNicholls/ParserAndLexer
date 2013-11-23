@@ -15,7 +15,12 @@ end
 #----------------------------------------------------------------------------
 
 class Parser
-  
+
+  ROUND_FUNCTIONS = { 'ABS' => :abs, 'CEIL' => :ceil, 'FLOOR' => :floor, 'ROUND' => :round }
+  MATH_FUNCTIONS  = { 'COS' => :cos, 'SIN' => :sin, 'TAN' => :tan, 'ACOS' => :acos,
+                      'ASIN' => :asin, 'ATAN' => :atan, 'SQR' => :sqrt, 'LOG' => :log,
+                      'LOG10' => :log10, 'EXP' => :exp }
+
   #--------------------------------------------------------------------------
   # Initialise, potentially with a different lexer than the default
   #--------------------------------------------------------------------------
@@ -215,7 +220,7 @@ private
     print '? ' unless prompted
     value = $stdin.gets.chomp
     
-    if value =~ /^[\d\.]+$/  # All digits (and decimal point)
+    if value =~ /^(\d|\.)+$/  # All digits (and decimal point)
       value = (value.include? '.') ? value.to_f : value.to_i
     end
     
@@ -470,38 +475,22 @@ private
 
     value
   end
+  
 
   #--------------------------------------------------------------------------
   # Perform a function, or return the value of a variable
   #--------------------------------------------------------------------------
 
   def function name
-    case name
-      when  'COS'   then  Math::cos( bracket_exp )
-      when  'SIN'   then  Math::sin( bracket_exp )
-      when  'TAN'   then  Math::tan( bracket_exp )
-    
-      when  'ACOS'  then  Math::acos( bracket_exp )
-      when  'ASIN'  then  Math::asin( bracket_exp )
-      when  'ATAN'  then  Math::atan( bracket_exp )
-    
-      when  'ABS'   then  bracket_exp.abs
-      when  'CEIL'  then  bracket_exp.ceil
-      when  'FLOOR' then  bracket_exp.floor
-      when  'ROUND' then  bracket_exp.round
+    rname = ROUND_FUNCTIONS[name]   # ABS, ROUND etc
+    return bracket_exp.send( rname ) unless rname.nil?
 
-      when  'SQR'   then  Math::sqrt( bracket_exp )
-      
-      when  'LOG'   then  Math::log( bracket_exp )
-      when  'LOG10' then  Math::log10( bracket_exp )
-      when  'EXP'   then  Math::exp( bracket_exp )
-      
-      else
-        value_of name
-    end
+    mname = MATH_FUNCTIONS[name]    #SIN, COS etc
+    return Math.send( mname, bracket_exp ) unless mname.nil?
+
+    value_of name
   end
-  
-  
+
   
   #--------------------------------------------------------------------------
   # Print one item (string, number, variable, separator)
@@ -522,12 +511,10 @@ private
   #--------------------------------------------------------------------------
 
   def expect options
-    this = @lexer.next
+    raise ParserError.new( "Unxexpected <#{@lexer.peek_next_type}> in #@line. (Valid: #{options.inspect})" ) \
+      unless options.include? @lexer.peek_next_type
     
-    raise ParserError.new( "Unxexpected <#{this}> in #@line. (Valid: #{options.inspect})" ) \
-      unless options.include? this.type
-    
-    this
+    @lexer.next
   end
   
   

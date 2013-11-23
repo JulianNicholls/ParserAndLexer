@@ -20,7 +20,6 @@ class Program
     end while !lines.empty?
 
     @cur_line = 0
-    
   end
   
   
@@ -51,9 +50,8 @@ class Program
       lexer.from line
       first = lexer.next
       first = lexer.next if first.type == :integer  # Skip line number
-      if first.type == :DATA
-        data_items << lexer.collect_data
-      end
+      
+      data_items << lexer.collect_data if first.type == :DATA
     end
     
     data_items.flatten
@@ -71,10 +69,8 @@ class Program
     @lines.each do |line|
       lexer.from line
       first = lexer.next
-      if first.type == :integer && first.value == line_number
-        @cur_line = line_index
-        return
-      end
+      return @cur_line = line_index if first.type == :integer && first.value == line_number
+      
       line_index += 1
     end
     

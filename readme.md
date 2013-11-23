@@ -24,7 +24,7 @@ There are some useful parts to be had.
 parsers.
 
 2. The Parser has an arithmetic expression recogniser which handles add, 
-subtract, multiply, divide, power, modulo, and a number for functions. 
+subtract, multiply, divide, power, modulo, and a number of functions. 
 It also recognises variables and bracketed expressions.
 
 3. There is a whole set of rspec tests that double as examples of what can 

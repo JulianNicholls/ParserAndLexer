@@ -253,11 +253,7 @@ private
     
     raise LexerError.new( "Invalid number encountered: #{str}" ) if str =~ /.*\..*\./
 
-    if is_f
-      Token.new( :float, str.to_f )
-    else
-      Token.new( :integer, str.to_i )
-    end
+    is_f ? Token.new( :float, str.to_f ) : Token.new( :integer, str.to_i )
   end
   
   
@@ -340,6 +336,7 @@ end
 #----------------------------------------------------------------------------
 
 if $0 == __FILE__
+
 def render_loop lex
   cur = lex.next
   while cur.type != :eos
