@@ -1,4 +1,6 @@
 *~
 *.bak
+*.swp
 study
+line_parser.rb
 
