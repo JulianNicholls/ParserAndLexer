@@ -108,6 +108,19 @@ class Lexer
   end
 
   #----------------------------------------------------------------------------
+  # Expect definite tokens
+  #----------------------------------------------------------------------------
+
+  def expect( options )
+    n = peek_next_type
+
+    fail "Unexpected <#{n}> in #{@str}. (Valid: #{options.inspect})" \
+      unless options.include? n
+
+    self.next
+  end
+
+  #----------------------------------------------------------------------------
   # Return the next token (or just its type) non-destructively
   #----------------------------------------------------------------------------
 

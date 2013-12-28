@@ -286,7 +286,7 @@ describe Parser do
       end.to raise_error
     end
 
-    it "should reject STEP 0 (unlikely, but there you go)" do
+    it 'should reject STEP 0 (unlikely, but there you go)' do
       expect { @parser.line_do 'FOR I = 1 TO 10 STEP 0' }.to raise_error
     end
   end

@@ -3,11 +3,13 @@ require_relative '../parser.rb'
 # Allow access to expressions
 
 class Parser
-  public :expression
-
   def feed_expression( str )
     @line = str
     @lexer.from @line
+  end
+
+  def expression
+    @expression.evaluate
   end
 end
 

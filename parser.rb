@@ -1,31 +1,12 @@
 require './lexer'
 require './program'
+require './expression'
 
 #----------------------------------------------------------------------------
 # Parser
 #----------------------------------------------------------------------------
 
 class Parser
-  ROUND_FUNCTIONS = {
-    'ABS' => :abs,
-    'CEIL' => :ceil,
-    'FLOOR' => :floor,
-    'ROUND' => :round
-  }
-
-  MATH_FUNCTIONS  = {
-    'COS' => :cos,
-    'SIN' => :sin,
-    'TAN' => :tan,
-    'ACOS' => :acos,
-    'ASIN' => :asin,
-    'ATAN' => :atan,
-    'SQR' => :sqrt,
-    'LOG' => :log,
-    'LOG10' => :log10,
-    'EXP' => :exp
-  }
-
   STATEMENTS = {
     PRINT:  :do_print,
     INPUT:  :do_input,
@@ -41,8 +22,9 @@ class Parser
   #--------------------------------------------------------------------------
 
   def initialize( opts = {} )
-    @line      = nil
-    @lexer     = opts[:lexer] || Lexer.new
+    @line       = nil
+    @lexer      = opts[:lexer] || Lexer.new
+    @expression = ArithmeticExpression.new( self, @lexer )
 
     reset_variables
   end
@@ -84,35 +66,30 @@ class Parser
   def line_do( line = nil )
     unless line.nil?
       @line = line
-      @lexer.from @line
+      @lexer.from line
     end
 
     fail 'No input specified' if @line.nil?
 
     statement = @lexer.next
     statement = @lexer.next if statement.type == :integer   # Line number, skip it
+    type      = statement.type
 
-    if STATEMENTS.key?( statement.type )
-      send( STATEMENTS[statement.type] )
+    if STATEMENTS.key?( type )
+      send( STATEMENTS[type] )
     else
-      case statement.type
-      when :eos         then  return :eos    # May be expected, or not...
+      case type
+      when :eos, :NEXT, :RETURN, :END then return type
 
       when :REM, :DATA  then  return :eol # Empty, comment, or DATA line, so ignore
 
       when :LET, :ident then  do_assignment statement
-
-      when :NEXT        then  return :NEXT
-
-      when :RETURN      then  return :RETURN
 
       when :RESTORE     then  @data = @orig_data.dup
 
       when :STOP                    # Emergency stop, as I recall
         puts 'STOPped'
         return :END
-
-      when :END         then  return  :END
 
       else                          # Ignore the not understood for now
         do_ignore
@@ -128,6 +105,16 @@ class Parser
 
   def inspect
     "#<Parser @line=\"#{@line}\" #{@variables}>"
+  end
+
+  #--------------------------------------------------------------------------
+  # Return the value of a stored variable.
+  # Added a special variable (TI) which gives the current epoch.
+  #--------------------------------------------------------------------------
+
+  def value_of( name )
+    return Time.now.to_f if name == 'TI'
+    @variables[name]
   end
 
   private
@@ -153,7 +140,7 @@ class Parser
     @variables[ident] = if @lexer.peek_next_type == :string
                           @lexer.next.value
                         else
-                          expression
+                          @expression.evaluate
                         end
   end
 
@@ -163,23 +150,28 @@ class Parser
   #--------------------------------------------------------------------------
 
   def do_print
-    last, item = nil, nil
+    last_item = nil
 
     loop do
-      case @lexer.peek_next_type
-      when :eol, :eos           then  break
-      when :string, :separator  then  item = @lexer.next
+      t = @lexer.peek_next_type
+      break if t == :eol || t == :eos
 
-      else
-        item = Token.new( :float, expression )
-      end
-
-      print_item item
-
-      last = item
+      last_item = print_element( t )
     end
 
-    puts if last.nil? || last.type != :separator
+    puts if last_item.nil? || last_item.type != :separator
+  end
+
+  def print_element( type )
+    if [:string, :separator].include? type
+      item = @lexer.next
+    else
+      item = Token.new( :float, @expression.evaluate )
+    end
+
+    print_item item
+
+    item
   end
 
   #--------------------------------------------------------------------------
@@ -188,7 +180,18 @@ class Parser
   #--------------------------------------------------------------------------
 
   def do_input
-    item, prompted = nil, false
+    prompted, item = input_prompt
+    print '? ' unless prompted
+    val = $stdin.gets.chomp
+
+    # All digits (and decimal point)
+    val = (val.include?( '.' ) ? val.to_f : val.to_i) if val =~ /^(\d|\.)+$/
+
+    @variables[item.value] = val
+  end
+
+  def input_prompt
+    prompted, item = false, nil
 
     loop do
       item = expect [:string, :separator, :ident, :eos]
@@ -199,13 +202,7 @@ class Parser
       print_item item
     end
 
-    print '? ' unless prompted
-    val = $stdin.gets.chomp
-
-    # All digits (and decimal point)
-    val = (val.include?( '.' ) ? val.to_f : val.to_i) if val =~ /^(\d|\.)+$/
-
-    @variables[item.value] = val
+    [prompted, item]
   end
 
   #--------------------------------------------------------------------------
@@ -216,21 +213,18 @@ class Parser
   def do_conditional
     dc1 = inequality
 
-    t = @lexer.peek_next_type
+    loop do
+      t = @lexer.peek_next_type
 
-    while [:AND, :OR].include? t
+      break unless [:AND, :OR].include? t
       @lexer.skip
 
       # The rhs has to be evaluated here because of short-circuiting
 
       rhs = inequality
 
-      case t
-      when :AND   then dc1 = (dc1 && rhs)
-      when :OR    then dc1 = (dc1 || rhs)
-      end
-
-      t = @lexer.peek_next_type
+      dc1 &&= rhs if t == :AND
+      dc1 ||= rhs if t == :OR
     end
 
     if dc1
@@ -246,7 +240,7 @@ class Parser
   def do_for
     var, start, finish, step = collect_for_parms
 
-    fail "STEP 0 IS INVALID in #{str}" if step == 0
+    fail "STEP 0 IS INVALID in #{@str}" if step == 0
 
     # Mark our place in the program because we'll need to return here at the
     # top of each loop
@@ -260,20 +254,11 @@ class Parser
       break if step < 0 && value_of( var ) < finish # Counting down
       break if step > 0 && value_of( var ) > finish # Counting up
 
-      # Return to the top of the loop
+      # Go round the loop until we reach our NEXT or END, or fall out of
+      # the bottom of the program, which is bad m'key.
 
-      @program.cur_line = place_line
+      ret = do_for_loop( place_line )
 
-      # Go round the loop until we reach our NEXT
-
-      ret = nil
-
-      loop do
-        ret  = line_do @program.next_line
-        break if ret == :eos || ret == :NEXT || ret == :END
-      end
-
-      fail 'Missing NEXT' if ret == :eos
       break if ret == :END
 
       # We got NEXT, so go around again, as long as the (optional) variable
@@ -288,16 +273,33 @@ class Parser
   def collect_for_parms             # FOR ...
     var, step = expect( [:ident] ).value, 1  # var ...
     expect [:assign]                # = ...
-    start  = expression             # 1 ...
+    start  = @expression.evaluate   # 1 ...
     expect [:TO]                    # TO ...
-    finish = expression             # 10 ...
+    finish = @expression.evaluate   # 10 ...
 
     if @lexer.peek_next_type == :STEP  # STEP ...
       @lexer.skip
-      step = expression     # 2
+      step = @expression.evaluate     # 2
     end
 
     [var, start, finish, step]
+  end
+
+  def do_for_loop( place_line )
+    # Return to the top of the loop
+
+    @program.cur_line = place_line
+
+    ret = nil
+
+    loop do
+      ret  = line_do @program.next_line
+      break if ret == :eos || ret == :NEXT || ret == :END
+    end
+
+    fail 'Missing NEXT' if ret == :eos
+
+    ret
   end
 
   #--------------------------------------------------------------------------
@@ -342,127 +344,34 @@ class Parser
   #--------------------------------------------------------------------------
 
   def inequality
-    negate = false
+    negate = @lexer.peek_next_type == :NOT
 
-    if @lexer.peek_next_type == :NOT
-      @lexer.skip
-      negate = true
-    end
+    @lexer.skip if negate
 
-    lhside = expression
-    cmp    = expect [:assign, :cmp_eq, :cmp_ne, :cmp_gt, :cmp_gte, :cmp_lt, :cmp_lte]
-    rhside = expression
+    cmp, lhside, rhside = collect_inequality
 
-    truth = case cmp.type
-            when  :cmp_eq, :assign then  (lhside == rhside)
-            when  :cmp_ne     then  (lhside != rhside)
-            when  :cmp_gt     then  (lhside > rhside)
-            when  :cmp_gte    then  (lhside >= rhside)
-            when  :cmp_lt     then  (lhside < rhside)
-            when  :cmp_lte    then  (lhside <= rhside)
-    end
+    truth = do_inequality( cmp, lhside, rhside )
 
     negate ? !truth : truth
   end
 
-  #--------------------------------------------------------------------------
-  # Evaluate an arithmetic expression, involving +, -, *, /, % (modulo),
-  # ^ (exponentiation) and functions
-  #--------------------------------------------------------------------------
+  def collect_inequality
+    lhside = @expression.evaluate
+    cmp    = expect [:assign, :cmp_eq, :cmp_ne, :cmp_gt, :cmp_gte, :cmp_lt, :cmp_lte]
+    rhside = @expression.evaluate
 
-  def expression
-    part1 = factor
-
-    t = @lexer.peek_next_type
-
-    while [:plus, :minus].include? t
-      @lexer.skip
-
-      if t == :plus
-        part1 += factor
-      else
-        part1 -= factor
-      end
-
-      t = @lexer.peek_next_type
-    end
-
-    part1
+    [cmp, lhside, rhside]
   end
 
-  #--------------------------------------------------------------------------
-  # Evaluate a multiplicative expression
-  #--------------------------------------------------------------------------
-
-  def factor
-    factor1 = term
-
-    t = @lexer.peek_next_type
-
-    while [:multiply, :divide, :modulo].include? t
-      @lexer.skip
-
-      case t
-      when :multiply  then  factor1 *= term
-      when :divide    then  factor1 /= term
-      when :modulo    then  factor1 = factor1.modulo term
-      end
-
-      t = @lexer.peek_next_type
+  def do_inequality( cmp, lhside, rhside )
+    case cmp.type
+    when  :cmp_eq, :assign  then  (lhside == rhside)
+    when  :cmp_ne           then  (lhside != rhside)
+    when  :cmp_gt           then  (lhside > rhside)
+    when  :cmp_gte          then  (lhside >= rhside)
+    when  :cmp_lt           then  (lhside < rhside)
+    when  :cmp_lte          then  (lhside <= rhside)
     end
-
-    factor1
-  end
-
-  #--------------------------------------------------------------------------
-  # Evaluate a single term: variable, number, bracketed expression, or
-  # function in an expression. Exponentiation is also handled here.
-  #--------------------------------------------------------------------------
-
-  def term
-    t = expect [:br_open, :integer, :float, :ident]
-
-    case t.type
-    when :br_open           then  value = bracket_exp( t ) # Already collected '('
-    when :integer, :float   then  value = t.value
-    when :ident             then  value = function( t.value )
-    end
-
-    # Take care of power expressions here.
-
-    if @lexer.peek_next_type == :exponent
-      @lexer.skip
-      value **= term
-    end
-
-    value
-  end
-
-  #--------------------------------------------------------------------------
-  # Evaluate a bracketed expression. Broken out from term, so that
-  # precedence is correct.
-  #--------------------------------------------------------------------------
-
-  def bracket_exp( token = nil )
-    expect [:br_open] if token.nil?
-    value = expression
-    expect [:br_close]
-
-    value
-  end
-
-  #--------------------------------------------------------------------------
-  # Perform a function, or return the value of a variable
-  #--------------------------------------------------------------------------
-
-  def function( name )
-    rname = ROUND_FUNCTIONS[name]   # ABS, ROUND etc
-    return bracket_exp.send( rname ) unless rname.nil?
-
-    mname = MATH_FUNCTIONS[name]    # SIN, COS etc
-    return Math.send( mname, bracket_exp ) unless mname.nil?
-
-    value_of name
   end
 
   #--------------------------------------------------------------------------
@@ -483,22 +392,7 @@ class Parser
   #--------------------------------------------------------------------------
 
   def expect( options )
-    n = @lexer.peek_next_type
-
-    fail "Unexpected <#{n}> in #{@line}. (Valid: #{options.inspect})" \
-      unless options.include? n
-
-    @lexer.next
-  end
-
-  #--------------------------------------------------------------------------
-  # Return the value of a stored variable.
-  # Added a special variable (TI) which gives the current epoch.
-  #--------------------------------------------------------------------------
-
-  def value_of( name )
-    return Time.now.to_f if name == 'TI'
-    @variables[name]
+    @lexer.expect( options )
   end
 end
 
