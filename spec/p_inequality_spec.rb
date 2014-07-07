@@ -1,7 +1,6 @@
 require_relative '../parser.rb'
 
-# Allow access to inequality
-
+# Allow access to inequality for testing
 class Parser
   public :inequality
 

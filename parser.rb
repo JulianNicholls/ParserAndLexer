@@ -5,7 +5,6 @@ require './expression'
 #----------------------------------------------------------------------------
 # Parser
 #----------------------------------------------------------------------------
-
 class Parser
   STATEMENTS = {
     PRINT:  :do_print,
@@ -227,10 +226,10 @@ class Parser
       dc1 ||= rhs if t == :OR
     end
 
-    if dc1
-      expect [:THEN]
-      line_do
-    end
+    return unless dc1
+
+    expect [:THEN]
+    line_do
   end
 
   #--------------------------------------------------------------------------

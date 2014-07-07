@@ -2,7 +2,6 @@ require_relative '../parser.rb'
 require 'spec_helper.rb'
 
 # Parser that allow access to its variables
-
 class Parser
   attr_reader :variables
 end

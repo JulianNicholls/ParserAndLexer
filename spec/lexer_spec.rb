@@ -1,7 +1,6 @@
 require_relative '../lexer'
 
 # Lexer that can read the string and call collect_data
-
 class Lexer
   attr_reader :str
 

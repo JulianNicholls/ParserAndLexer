@@ -1,7 +1,6 @@
 require_relative '../parser.rb'
 
-# Allow access to expressions
-
+# Allow access to expressions for testing
 class Parser
   def feed_expression( str )
     @line = str
@@ -14,7 +13,6 @@ class Parser
 end
 
 describe Parser do
-
   before :all do
     @parser = Parser.new
     @parser.line_do 'A1 = 10'

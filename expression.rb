@@ -1,5 +1,4 @@
 # Parser for arithmetic expressions
-
 class ArithmeticExpression
   ROUND_FUNCS = {
     ABS:   :abs,
@@ -126,7 +125,7 @@ class ArithmeticExpression
   def function( name )
     fname = name.upcase.to_sym
     return bracket_exp.send( ROUND_FUNCS[fname] )      if ROUND_FUNCS.key? fname
-    return Math.send( MATH_FUNCS[fname], bracket_exp ) if MATH_FUNCS.key?  fname
+    return Math.send( MATH_FUNCS[fname], bracket_exp ) if MATH_FUNCS.key? fname
 
     @parent.value_of name
   end

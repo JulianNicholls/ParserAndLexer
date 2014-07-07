@@ -1,7 +1,6 @@
 #----------------------------------------------------------------------------
 # Token returned by lexer
 #----------------------------------------------------------------------------
-
 class Token
   attr_reader :type, :value
 
@@ -32,12 +31,11 @@ end
 #    non-destructively.
 #
 #----------------------------------------------------------------------------
-
 class Lexer
-  RESERVED = %w{
+  RESERVED = %w(
     PRINT INPUT LET IF THEN FOR TO STEP NEXT END STOP REM GOTO GOSUB RETURN
     READ DATA RESTORE AND OR NOT
-  }
+  )
 
   PATTERNS = {
     /\A['"]/            => :collect_string,
@@ -152,7 +150,7 @@ class Lexer
   # Simply match a colon
   #----------------------------------------------------------------------------
 
-  def collect_colon( mat )
+  def collect_colon( _mat )
     Token.new :colon
   end
 
@@ -160,7 +158,7 @@ class Lexer
   # Match a set of CR and LF, returning a single token.
   #----------------------------------------------------------------------------
 
-  def collect_eol( mat )
+  def collect_eol( _mat )
     Token.new :eol
   end
 
@@ -216,7 +214,7 @@ class Lexer
       re = /\A-[\d\.]+/
       mat2 = re.match @str
       @last_re = re
-      return collect_number mat2.to_s
+      return collect_number mat2
     end
 
     Token.new OPERATORS[mat.to_s]
@@ -270,13 +268,13 @@ class Lexer
   def collect_data
     result = []
 
-    _next = self.next
+    loop do
+      next_entry = self.next
+      break if next_entry.type == :eos
 
-    while _next.type != :eos
-      result << _next.value
+      result << next_entry.value
       comma = self.next
       break if comma.type == :eos
-      _next = self.next
     end
 
     result
