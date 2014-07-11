@@ -254,11 +254,9 @@ class Parser
       break if step > 0 && value_of( var ) > finish # Counting up
 
       # Go round the loop until we reach our NEXT or END, or fall out of
-      # the bottom of the program, which is bad m'key.
+      # the bottom of the program, which is bad m'kay.
 
-      ret = do_for_loop( place_line )
-
-      break if ret == :END
+      break if do_for_loop( place_line ) == :END
 
       # We got NEXT, so go around again, as long as the (optional) variable
       # matches, if specified
