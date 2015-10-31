@@ -2,14 +2,14 @@
 # Capture the printed output so it can be examined (or ignored).
 #----------------------------------------------------------------------------
 
+# :reek:UtilityFunction
 def capture_stdout
   old_stdout  = $stdout
-  fake_stdout = StringIO.new
-  $stdout     = fake_stdout
+  $stdout     = StringIO.new
 
   yield
 
-  fake_stdout.string
+  $stdout.string
 ensure
   $stdout = old_stdout
 end
@@ -18,10 +18,10 @@ end
 # Feed stdin with a prepared string
 #----------------------------------------------------------------------------
 
+# :reek:UtilityFunction
 def feed_stdin(str)
   old_stdin  = $stdin
-  fake_stdin = StringIO.new str
-  $stdin     = fake_stdin
+  $stdin     = StringIO.new str
 
   yield
 ensure

@@ -5,7 +5,8 @@ class Token
   attr_reader :type, :value
 
   def initialize(type, value = nil)
-    @type, @value  = type, value
+    @type  = type
+    @value = value
   end
 
   def to_s
@@ -35,20 +36,21 @@ class Lexer
   RESERVED = %w(
     PRINT INPUT LET IF THEN FOR TO STEP NEXT END STOP REM GOTO GOSUB RETURN
     READ DATA RESTORE AND OR NOT
- )
+  )
 
   PATTERNS = {
     /\A['"]/            => :collect_string,
-    /\A[\d\.]+/         => :collect_number,   # Must precede ident, \w includes \d
-    /\A\w+/             => :collect_ident,
-    /\A==?/             => :collect_equals,
-    /\A[!<>]=?/         => :collect_compare,
-    /\A[\+\-\*\/%\^]/   => :collect_operator,
-    /\A[\r\n]+/         => :collect_eol,
-    /\A[\(\)]/          => :collect_bracket,
-    /\A[\[\]]/          => :collect_sqbracket,
-    /\A:/               => :collect_colon,
-    /\A[,;]/            => :collect_separator
+    /\A[\d\.]+/         => :collect_number,
+    /\A==?/             => -> (mat) { Token.new(mat.to_s == '=' ? :assign : :cmp_eq) },
+    /\A[!<>]=?/         => -> (mat) { Token.new CMPS[mat.to_s] },
+    %r{\A[\+\-\*/%\^]}  => :collect_operator,
+    /\A[\r\n]+/         => -> (_ma) { Token.new(:eol) },
+    /\A[\(\)]/          => -> (mat) { Token.new(mat.to_s == '(' ? :br_open : :br_close) },
+    /\A[\[\]]/          => -> (mat) { Token.new(mat.to_s == '[' ? :sqbr_open : :sqbr_close) },
+    /\A:/               => -> (_ma) { Token.new(:colon) },
+    /\A[,;]/            => -> (mat) { Token.new(:separator, mat.to_s) },
+
+    /\A\w+/             => :collect_ident # Pretty much anything else...
   }
 
   CMPS = {
@@ -83,7 +85,7 @@ class Lexer
 
   def from(string)
     @str = string.dup
-    self              # Allow chaining
+    self # Allow chaining
   end
 
   #----------------------------------------------------------------------------
@@ -95,6 +97,12 @@ class Lexer
     @str.slice! @last_re if ret.type != :eos
 
     ret
+  end
+
+  # :reek:DuplicateMethodCall - next is not idempotent, by design
+  def next_skip_line_number
+    first = self.next
+    first.type == :integer ? self.next : first
   end
 
   #----------------------------------------------------------------------------
@@ -110,10 +118,10 @@ class Lexer
   #----------------------------------------------------------------------------
 
   def expect(options)
-    n = peek_next_type
+    type = peek_next_type
 
-    fail "Unexpected <#{n}> in #{@str}. (Valid: #{options.inspect})" \
-      unless options.include? n
+    fail "Unexpected <#{type}> in #{@str}. (Valid: #{options.inspect})" \
+      unless options.include? type
 
     self.next
   end
@@ -126,15 +134,16 @@ class Lexer
     peek_next.type
   end
 
+  # :reek:NestedIterators - Two is fine AFAIC
   def peek_next
-    fail 'No string specified' if @str.nil?
+    fail 'No string specified' unless @str
 
     return Token.new(:eos) if skip_space == :eos
 
     PATTERNS.each do |re, func|
       re.match(@str) do |mat|
-        @last_re = re           # This is what will be removed
-        return send(func, mat)
+        @last_re = re # This is what will be removed
+        return func.is_a?(Symbol) ? send(func, mat) : instance_exec(mat, &func)
       end
     end
 
@@ -147,89 +156,33 @@ class Lexer
   private
 
   #----------------------------------------------------------------------------
-  # Simply match a colon
-  #----------------------------------------------------------------------------
-
-  def collect_colon(_mat)
-    Token.new :colon
-  end
-
-  #----------------------------------------------------------------------------
-  # Match a set of CR and LF, returning a single token.
-  #----------------------------------------------------------------------------
-
-  def collect_eol(_mat)
-    Token.new :eol
-  end
-
-  #----------------------------------------------------------------------------
-  # Match a comparison operator: =, ==, !=, <, <=, >, >=
-  #----------------------------------------------------------------------------
-
-  def collect_compare(mat)
-    Token.new CMPS[mat.to_s]
-  end
-
-  #----------------------------------------------------------------------------
-  # Match a print separator: ; or ,
-  #----------------------------------------------------------------------------
-
-  def collect_separator(mat)
-    Token.new(:separator, mat.to_s)
-  end
-
-  #----------------------------------------------------------------------------
-  # Match an assignment or equality comparison: = or ==
-  # Although = is assignment, it is accepted as equals in a comparison
-  # expression
-  #----------------------------------------------------------------------------
-
-  def collect_equals(mat)
-    Token.new(mat.to_s == '=' ? :assign : :cmp_eq)
-  end
-
-  #----------------------------------------------------------------------------
-  # Match a bracket: (or)
-  #----------------------------------------------------------------------------
-
-  def collect_bracket(mat)
-    Token.new(mat.to_s == '(' ? :br_open : :br_close)
-  end
-
-  #----------------------------------------------------------------------------
-  # Match a square bracket: [ or ]
-  #----------------------------------------------------------------------------
-
-  def collect_sqbracket(mat)      # Square bracket
-    Token.new(mat.to_s == '[' ? :sqbr_open : :sqbr_close)
-  end
-
-  #----------------------------------------------------------------------------
   # Match an arithmetic operator, or a negative number because that is led-in
   # by a minus operator, of course.
   #----------------------------------------------------------------------------
 
   def collect_operator(mat)
-    if mat.to_s == '-' && (peek =~ /\d/)
-      re = /\A-[\d\.]+/
-      mat2 = re.match @str
-      @last_re = re
-      return collect_number mat2
-    end
+    text = mat.to_s
 
-    Token.new OPERATORS[mat.to_s]
+    return collect_negative_number if text == '-' && (peek =~ /\d/)
+
+    Token.new OPERATORS[text]
   end
 
   #----------------------------------------------------------------------------
   # Match a number, either an integer or a floating-point value
   #----------------------------------------------------------------------------
 
+  def collect_negative_number
+    @last_re = /\A-[\d\.]+/
+    collect_number(@last_re.match @str)
+  end
+
+  # :reek:FeatureEnvy - str is just a string
   def collect_number(mat)
     str  = mat.to_s
     is_f = str.include? '.'
 
     # Throw a fit if there's more than one decimal point
-
     fail "Invalid number encountered: #{str}" if str =~ /.*\..*\./
 
     is_f ? Token.new(:float, str.to_f) : Token.new(:integer, str.to_i)
@@ -250,21 +203,20 @@ class Lexer
   #----------------------------------------------------------------------------
 
   def collect_string(mat)
-    del  = mat.to_s
-    re   = Regexp.new "#{del}([^#{del}]+)#{del}"
-    mat2 = re.match @str
+    delim     = mat.to_s
+    @last_re  = %r{#{delim}([^#{delim}]+)#{delim}}
+    content   = @last_re.match @str
 
-    fail "Unterminated string encountered: #{@str}" if mat2.nil?
+    fail "Unterminated string encountered: #{@str}" unless content
 
-    @last_re = re
-
-    Token.new(:string, mat2[1])
+    Token.new(:string, content[1])
   end
 
   #----------------------------------------------------------------------------
   # Collect a list of comma separated values into an array
   #----------------------------------------------------------------------------
 
+  # :reek:DuplicateMethodCall - next is not idempotent, by design
   def collect_data
     result = []
 
@@ -281,11 +233,11 @@ class Lexer
   end
 
   #----------------------------------------------------------------------------
-  # Skip spaces and tabs and return EOS if there's no more to be had.
+  # Skip spaces and tabs, and return EOS if there's no more to be had.
   #----------------------------------------------------------------------------
 
   def skip_space
-    @str.slice!(/\A[ \t]+/);   # Not \s, because we want to capture EOL characters
+    @str.slice!(/\A[ \t]+/); # Not \s, we want to capture EOL characters
     eos? ? :eos : :ok
   end
 
@@ -295,14 +247,14 @@ class Lexer
   #----------------------------------------------------------------------------
 
   def peek
-    @str[1]                     # Character after the one just matched
+    @str[1]
   end
 
   #----------------------------------------------------------------------------
   # Return whether the string is exhausted
   #----------------------------------------------------------------------------
 
-  def eos?                      # Are we done with this string?
+  def eos?
     @str.empty?
   end
 end

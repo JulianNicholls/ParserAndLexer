@@ -16,6 +16,13 @@ class Parser
     READ:   :do_read
   }
 
+  INEQUALITY_SYMBOLS = [
+    :assign, :cmp_eq,
+    :cmp_ne,
+    :cmp_gt, :cmp_gte,
+    :cmp_lt, :cmp_lte
+  ]
+
   #--------------------------------------------------------------------------
   # Initialise, potentially with a different lexer than the default
   #--------------------------------------------------------------------------
@@ -71,7 +78,7 @@ class Parser
     fail 'No input specified' if @line.nil?
 
     statement = @lexer.next
-    statement = @lexer.next if statement.type == :integer   # Line number, skip it
+    statement = @lexer.next if statement.type == :integer # Skip line number
     type      = statement.type
 
     if STATEMENTS.key?(type)
@@ -80,22 +87,22 @@ class Parser
       case type
       when :eos, :NEXT, :RETURN, :END then return type
 
-      when :REM, :DATA  then  return :eol # Empty, comment, or DATA line, so ignore
+      when :REM, :DATA  then  return :eol # Ignore empty, comment, or DATA line
 
       when :LET, :ident then  do_assignment statement
 
       when :RESTORE     then  @data = @orig_data.dup
 
-      when :STOP                    # Emergency stop, as I recall
+      when :STOP # Emergency stop, as I recall
         puts 'STOPped'
         return :END
 
-      else                          # Ignore the not understood for now
+      else # Ignore the not understood for now
         do_ignore
       end
     end
 
-    :eol                          # Signify that the line has been handled
+    :eol # Signify that the line has been handled
   end
 
   #--------------------------------------------------------------------------
@@ -152,13 +159,13 @@ class Parser
     last_item = nil
 
     loop do
-      t = @lexer.peek_next_type
-      break if t == :eol || t == :eos
+      type = @lexer.peek_next_type
+      break if type == :eol || type == :eos
 
-      last_item = print_element(t)
+      last_item = print_element(type)
     end
 
-    puts if last_item.nil? || last_item.type != :separator
+    puts unless last_item && last_item.type == :separator
   end
 
   def print_element(type)
@@ -267,16 +274,16 @@ class Parser
     end
   end
 
-  def collect_for_parms             # FOR ...
-    var, step = expect([:ident]).value, 1  # var ...
+  def collect_for_parms # FOR ...
+    var, step = expect([:ident]).value, 1 # var ...
     expect [:assign]                # = ...
     start  = @expression.evaluate   # 1 ...
     expect [:TO]                    # TO ...
     finish = @expression.evaluate   # 10 ...
 
-    if @lexer.peek_next_type == :STEP  # STEP ...
+    if @lexer.peek_next_type == :STEP # STEP ...
       @lexer.skip
-      step = @expression.evaluate     # 2
+      step = @expression.evaluate # 2
     end
 
     [var, start, finish, step]
@@ -285,16 +292,15 @@ class Parser
   def do_for_loop(place_line)
     # Return to the top of the loop
 
-    @program.cur_line = place_line
+    @program.do_return place_line
 
     ret = nil
 
-    loop do
+    until ret == :eos || ret == :NEXT || ret == :END
       ret  = line_do @program.next_line
-      break if ret == :eos || ret == :NEXT || ret == :END
     end
 
-    fail 'Missing NEXT' if ret == :eos
+    fail 'Missing NEXT' unless ret == :NEXT
 
     ret
   end
@@ -314,7 +320,7 @@ class Parser
       break if ret == :eos || ret == :RETURN || ret == :END
     end
 
-    @program.cur_line = place_line if ret == :RETURN
+    @program.do_return(place_line) if ret == :RETURN
   end
 
   #--------------------------------------------------------------------------
@@ -345,16 +351,14 @@ class Parser
 
     @lexer.skip if negate
 
-    cmp, lhside, rhside = collect_inequality
-
-    truth = do_inequality(cmp, lhside, rhside)
+    truth = do_inequality(*collect_inequality)
 
     negate ? !truth : truth
   end
 
   def collect_inequality
     lhside = @expression.evaluate
-    cmp    = expect [:assign, :cmp_eq, :cmp_ne, :cmp_gt, :cmp_gte, :cmp_lt, :cmp_lte]
+    cmp    = expect INEQUALITY_SYMBOLS
     rhside = @expression.evaluate
 
     [cmp, lhside, rhside]

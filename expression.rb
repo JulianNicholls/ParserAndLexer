@@ -7,7 +7,7 @@ class ArithmeticExpression
     ROUND: :round
   }
 
-  MATH_FUNCS  = {
+  MATH_FUNCS = {
     COS:    :cos,
     SIN:    :sin,
     TAN:    :tan,
@@ -25,7 +25,8 @@ class ArithmeticExpression
   #--------------------------------------------------------------------------
 
   def initialize(parser, lexer)
-    @parent, @lexer = parser, lexer
+    @parent = parser
+    @lexer  = lexer
   end
 
   #--------------------------------------------------------------------------
@@ -33,44 +34,42 @@ class ArithmeticExpression
   # ^ (exponentiation) and functions
   #--------------------------------------------------------------------------
 
+  # :reek:DuplicateMethodCall - peek_next_type is not idempotent, by design
   def evaluate
-    part1 = factor
+    part = factor
 
-    t = @lexer.peek_next_type
+    type = @lexer.peek_next_type
 
-    while [:plus, :minus].include? t
-      part1 = do_additive(part1)
+    while [:plus, :minus].include? type
+      part = do_additive(part)
 
-      t = @lexer.peek_next_type
+      type = @lexer.peek_next_type
     end
 
-    part1
+    part
   end
 
   def do_additive(value)
-    if @lexer.next.type == :plus
-      value + factor
-    else
-      value - factor
-    end
+    @lexer.next.type == :plus ? value + factor : value - factor
   end
 
   #--------------------------------------------------------------------------
   # Evaluate a multiplicative expression
   #--------------------------------------------------------------------------
 
+  # :reek:DuplicateMethodCall - peek_next_type is not idempotent, by design
   def factor
-    factor1 = term
+    left = term
 
-    t = @lexer.peek_next_type
+    type = @lexer.peek_next_type
 
-    while [:multiply, :divide, :modulo].include? t
-      factor1 = do_factor(factor1)
+    while [:multiply, :divide, :modulo].include? type
+      left = do_factor(left)
 
-      t = @lexer.peek_next_type
+      type = @lexer.peek_next_type
     end
 
-    factor1
+    left
   end
 
   def do_factor(factor)
@@ -87,12 +86,13 @@ class ArithmeticExpression
   #--------------------------------------------------------------------------
 
   def term
-    t = @lexer.expect [:br_open, :integer, :float, :ident]
+    tok   = @lexer.expect [:br_open, :integer, :float, :ident]
+    value = tok.value
 
-    case t.type
-    when :br_open           then  value = bracket_exp(t) # Already collected '('
-    when :integer, :float   then  value = t.value
-    when :ident             then  value = function(t.value)
+    case tok.type
+    when :br_open then  value = bracket_exp(tok) # Already collected '('
+    # when :integer, :float, value is already set
+    when :ident   then  value = function(value)
     end
 
     value = do_powers(value) if @lexer.peek_next_type == :exponent
@@ -110,8 +110,9 @@ class ArithmeticExpression
   # precedence is correct.
   #--------------------------------------------------------------------------
 
+  # :reek:ControlParameter
   def bracket_exp(token = nil)
-    @lexer.expect [:br_open] if token.nil?
+    @lexer.expect [:br_open] unless token
     value = evaluate
     @lexer.expect [:br_close]
 

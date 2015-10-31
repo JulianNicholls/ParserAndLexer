@@ -1,6 +1,6 @@
 # Storage for a BASIC program
 class Program
-  attr_accessor :cur_line
+  attr_reader :cur_line
 
   #--------------------------------------------------------------------------
   # Initialise with a set of lines delimited with EOLs
@@ -10,14 +10,14 @@ class Program
     lines   = program.dup
     line_re = /\A(.*)[\n\r]+/
 
-    @lines, @num_lines, @cur_line  = [], 0, 0
+    @lines      = []
+    @num_lines  = @cur_line = 0
 
-    loop do
+    until lines.empty?
       line = line_re.match lines
       @lines << line[1]
       lines.slice! line_re
       @num_lines += 1
-      break if lines.empty?
     end
   end
 
@@ -45,8 +45,7 @@ class Program
 
     @lines.each do |line|
       lexer.from line
-      first = lexer.next
-      first = lexer.next if first.type == :integer  # Skip line number
+      first = lexer.next_skip_line_number
 
       data_items << lexer.collect_data if first.type == :DATA
     end
@@ -55,23 +54,22 @@ class Program
   end
 
   #--------------------------------------------------------------------------
-  # Perform a GOTO. Returns a ParserError if the requested line number is
+  # Perform a GOTO. Returns a StandardError if the requested line number is
   # not found.
   #--------------------------------------------------------------------------
 
   def goto(line_number)
-    line_index = 0
     lexer = Lexer.new
 
-    @lines.each do |line|
-      lexer.from line
-      first = lexer.next
-      @cur_line = line_index
-      return if first == Token.new(:integer, line_number)
-
-      line_index += 1
+    @cur_line = @lines.find_index do |line|
+      lexer.from(line).next == Token.new(:integer, line_number)
     end
 
-    fail "LINE NUMBER #{line_number} not found"
+    fail "LINE NUMBER #{line_number} not found" unless @cur_line
+  end
+
+  # RETURN from a GOSUB or return to thetop of a for loop.
+  def do_return(dest_line)
+    @cur_line = dest_line
   end
 end
