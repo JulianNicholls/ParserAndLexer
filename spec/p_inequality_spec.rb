@@ -4,7 +4,7 @@ require_relative '../parser.rb'
 class Parser
   public :inequality
 
-  def feed_inequality( str )
+  def feed_inequality(str)
     @line = str
     @lexer.from @line
   end
@@ -21,79 +21,78 @@ describe Parser do
   describe '.inequality' do
     it 'should evaluate = as equals' do
       @parser.feed_inequality '1 = 1'
-      expect( @parser.inequality ).to eq true
+      expect(@parser.inequality).to eq true
 
       @parser.feed_inequality '1 = A1'
-      expect( @parser.inequality ).to eq false
+      expect(@parser.inequality).to eq false
     end
 
     it 'should evaluate == as equals' do
       @parser.feed_inequality '1 == 1'
-      expect( @parser.inequality ).to eq true
+      expect(@parser.inequality).to eq true
 
       @parser.feed_inequality '1 == A1'
-      expect( @parser.inequality ).to eq false
+      expect(@parser.inequality).to eq false
     end
 
     it 'should evaluate != as not equals' do
       @parser.feed_inequality '1 != 1'
-      expect( @parser.inequality ).to eq false
+      expect(@parser.inequality).to eq false
 
       @parser.feed_inequality '1 != 2'
-      expect( @parser.inequality ).to eq true
+      expect(@parser.inequality).to eq true
     end
 
     it 'should evaluate > as greater than' do
       @parser.feed_inequality '2 > 1'
-      expect( @parser.inequality ).to eq true
+      expect(@parser.inequality).to eq true
 
       @parser.feed_inequality '2 > 2'
-      expect( @parser.inequality ).to eq false
+      expect(@parser.inequality).to eq false
 
       @parser.feed_inequality '1 > 2'
-      expect( @parser.inequality ).to eq false
+      expect(@parser.inequality).to eq false
     end
 
     it 'should evaluate >= as greater than or equal to' do
       @parser.feed_inequality '2 >= 1'
-      expect( @parser.inequality ).to eq true
+      expect(@parser.inequality).to eq true
 
       @parser.feed_inequality '2 >= 2'
-      expect( @parser.inequality ).to eq true
+      expect(@parser.inequality).to eq true
 
       @parser.feed_inequality '1 > 2'
-      expect( @parser.inequality ).to eq false
+      expect(@parser.inequality).to eq false
     end
 
     it 'should evaluate < as less than' do
       @parser.feed_inequality '1 < 2'
-      expect( @parser.inequality ).to eq true
+      expect(@parser.inequality).to eq true
 
       @parser.feed_inequality '2 < 2'
-      expect( @parser.inequality ).to eq false
+      expect(@parser.inequality).to eq false
 
       @parser.feed_inequality '2 < 1'
-      expect( @parser.inequality ).to eq false
+      expect(@parser.inequality).to eq false
     end
 
     it 'should evaluate <= as less than or equal to' do
       @parser.feed_inequality '1 <= 2'
-      expect( @parser.inequality ).to eq true
+      expect(@parser.inequality).to eq true
 
       @parser.feed_inequality '2 <= 2'
-      expect( @parser.inequality ).to eq true
+      expect(@parser.inequality).to eq true
 
       @parser.feed_inequality '2 <= 1'
-      expect( @parser.inequality ).to eq false
+      expect(@parser.inequality).to eq false
     end
 
     it 'should accept NOT' do
       @parser.feed_inequality 'NOT 2 < 1'           # False negated
-      expect( @parser.inequality ).to eq true
+      expect(@parser.inequality).to eq true
 
       @parser.feed_inequality 'NOT 1 < 2'           # True negated
-      expect( @parser.inequality ).to eq false
+      expect(@parser.inequality).to eq false
     end
-
   end
 end

@@ -6,7 +6,7 @@ class Program
   # Initialise with a set of lines delimited with EOLs
   #--------------------------------------------------------------------------
 
-  def initialize( program )
+  def initialize(program)
     lines   = program.dup
     line_re = /\A(.*)[\n\r]+/
 
@@ -59,7 +59,7 @@ class Program
   # not found.
   #--------------------------------------------------------------------------
 
-  def goto( line_number )
+  def goto(line_number)
     line_index = 0
     lexer = Lexer.new
 
@@ -67,7 +67,7 @@ class Program
       lexer.from line
       first = lexer.next
       @cur_line = line_index
-      return if first == Token.new( :integer, line_number )
+      return if first == Token.new(:integer, line_number)
 
       line_index += 1
     end

@@ -18,7 +18,7 @@ end
 # Feed stdin with a prepared string
 #----------------------------------------------------------------------------
 
-def feed_stdin( str )
+def feed_stdin(str)
   old_stdin  = $stdin
   fake_stdin = StringIO.new str
   $stdin     = fake_stdin

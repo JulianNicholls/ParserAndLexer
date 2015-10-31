@@ -4,7 +4,7 @@
 class Token
   attr_reader :type, :value
 
-  def initialize( type, value = nil )
+  def initialize(type, value = nil)
     @type, @value  = type, value
   end
 
@@ -12,7 +12,7 @@ class Token
     "<#{@type}: #{@value}>"
   end
 
-  def ==( other )
+  def ==(other)
     (type == other.type) && (value == other.value)
   end
 end
@@ -35,7 +35,7 @@ class Lexer
   RESERVED = %w(
     PRINT INPUT LET IF THEN FOR TO STEP NEXT END STOP REM GOTO GOSUB RETURN
     READ DATA RESTORE AND OR NOT
-  )
+ )
 
   PATTERNS = {
     /\A['"]/            => :collect_string,
@@ -72,7 +72,7 @@ class Lexer
   # Initialise, potentially with a replaced set of reserved words
   #----------------------------------------------------------------------------
 
-  def initialize( opts = {} )
+  def initialize(opts = {})
     @reserved = opts[:reserved] || RESERVED
   end
 
@@ -81,7 +81,7 @@ class Lexer
   # the original, because we are going to do destructive things.
   #----------------------------------------------------------------------------
 
-  def from( string )
+  def from(string)
     @str = string.dup
     self              # Allow chaining
   end
@@ -109,7 +109,7 @@ class Lexer
   # Expect definite tokens
   #----------------------------------------------------------------------------
 
-  def expect( options )
+  def expect(options)
     n = peek_next_type
 
     fail "Unexpected <#{n}> in #{@str}. (Valid: #{options.inspect})" \
@@ -129,12 +129,12 @@ class Lexer
   def peek_next
     fail 'No string specified' if @str.nil?
 
-    return Token.new( :eos ) if skip_space == :eos
+    return Token.new(:eos) if skip_space == :eos
 
     PATTERNS.each do |re, func|
-      re.match( @str ) do |mat|
+      re.match(@str) do |mat|
         @last_re = re           # This is what will be removed
-        return send( func, mat )
+        return send(func, mat)
       end
     end
 
@@ -150,7 +150,7 @@ class Lexer
   # Simply match a colon
   #----------------------------------------------------------------------------
 
-  def collect_colon( _mat )
+  def collect_colon(_mat)
     Token.new :colon
   end
 
@@ -158,7 +158,7 @@ class Lexer
   # Match a set of CR and LF, returning a single token.
   #----------------------------------------------------------------------------
 
-  def collect_eol( _mat )
+  def collect_eol(_mat)
     Token.new :eol
   end
 
@@ -166,7 +166,7 @@ class Lexer
   # Match a comparison operator: =, ==, !=, <, <=, >, >=
   #----------------------------------------------------------------------------
 
-  def collect_compare( mat )
+  def collect_compare(mat)
     Token.new CMPS[mat.to_s]
   end
 
@@ -174,8 +174,8 @@ class Lexer
   # Match a print separator: ; or ,
   #----------------------------------------------------------------------------
 
-  def collect_separator( mat )
-    Token.new( :separator, mat.to_s )
+  def collect_separator(mat)
+    Token.new(:separator, mat.to_s)
   end
 
   #----------------------------------------------------------------------------
@@ -184,24 +184,24 @@ class Lexer
   # expression
   #----------------------------------------------------------------------------
 
-  def collect_equals( mat )
-    Token.new( mat.to_s == '=' ? :assign : :cmp_eq )
+  def collect_equals(mat)
+    Token.new(mat.to_s == '=' ? :assign : :cmp_eq)
   end
 
   #----------------------------------------------------------------------------
-  # Match a bracket: ( or )
+  # Match a bracket: (or)
   #----------------------------------------------------------------------------
 
-  def collect_bracket( mat )
-    Token.new( mat.to_s == '(' ? :br_open : :br_close )
+  def collect_bracket(mat)
+    Token.new(mat.to_s == '(' ? :br_open : :br_close)
   end
 
   #----------------------------------------------------------------------------
   # Match a square bracket: [ or ]
   #----------------------------------------------------------------------------
 
-  def collect_sqbracket( mat )      # Square bracket
-    Token.new( mat.to_s == '[' ? :sqbr_open : :sqbr_close )
+  def collect_sqbracket(mat)      # Square bracket
+    Token.new(mat.to_s == '[' ? :sqbr_open : :sqbr_close)
   end
 
   #----------------------------------------------------------------------------
@@ -209,7 +209,7 @@ class Lexer
   # by a minus operator, of course.
   #----------------------------------------------------------------------------
 
-  def collect_operator( mat )
+  def collect_operator(mat)
     if mat.to_s == '-' && (peek =~ /\d/)
       re = /\A-[\d\.]+/
       mat2 = re.match @str
@@ -224,7 +224,7 @@ class Lexer
   # Match a number, either an integer or a floating-point value
   #----------------------------------------------------------------------------
 
-  def collect_number( mat )
+  def collect_number(mat)
     str  = mat.to_s
     is_f = str.include? '.'
 
@@ -232,24 +232,24 @@ class Lexer
 
     fail "Invalid number encountered: #{str}" if str =~ /.*\..*\./
 
-    is_f ? Token.new( :float, str.to_f ) : Token.new( :integer, str.to_i )
+    is_f ? Token.new(:float, str.to_f) : Token.new(:integer, str.to_i)
   end
 
   #----------------------------------------------------------------------------
   # Match a variable identifier, upper and lower case, underscores and numbers
   #----------------------------------------------------------------------------
 
-  def collect_ident( mat )
+  def collect_ident(mat)
     str = mat.to_s
 
-    @reserved.include?( str ) ? Token.new( str.to_sym ) : Token.new( :ident, str )
+    @reserved.include?(str) ? Token.new(str.to_sym) : Token.new(:ident, str)
   end
 
   #----------------------------------------------------------------------------
   # Match a string delimited by either ' or ".
   #----------------------------------------------------------------------------
 
-  def collect_string( mat )
+  def collect_string(mat)
     del  = mat.to_s
     re   = Regexp.new "#{del}([^#{del}]+)#{del}"
     mat2 = re.match @str
@@ -258,7 +258,7 @@ class Lexer
 
     @last_re = re
 
-    Token.new( :string, mat2[1] )
+    Token.new(:string, mat2[1])
   end
 
   #----------------------------------------------------------------------------
@@ -285,7 +285,7 @@ class Lexer
   #----------------------------------------------------------------------------
 
   def skip_space
-    @str.slice!( /\A[ \t]+/ );   # Not \s, because we want to capture EOL characters
+    @str.slice!(/\A[ \t]+/);   # Not \s, because we want to capture EOL characters
     eos? ? :eos : :ok
   end
 

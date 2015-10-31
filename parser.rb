@@ -20,10 +20,10 @@ class Parser
   # Initialise, potentially with a different lexer than the default
   #--------------------------------------------------------------------------
 
-  def initialize( opts = {} )
+  def initialize(opts = {})
     @line       = nil
     @lexer      = opts[:lexer] || Lexer.new
-    @expression = ArithmeticExpression.new( self, @lexer )
+    @expression = ArithmeticExpression.new(self, @lexer)
 
     reset_variables
   end
@@ -33,7 +33,7 @@ class Parser
   #--------------------------------------------------------------------------
 
   def reset_variables
-    @variables = Hash.new( 0 )
+    @variables = Hash.new(0)
 
     # Initialise pi and e
 
@@ -45,7 +45,7 @@ class Parser
   # Do a whole program with lines separated by EOL characters
   #--------------------------------------------------------------------------
 
-  def do_program( program_text )
+  def do_program(program_text)
     fail 'empty program specified' if program_text.nil? || program_text.empty?
 
     reset_variables
@@ -54,7 +54,7 @@ class Parser
     @orig_data  = @program.data
     @data       = @orig_data.dup
 
-    while line_do( @program.next_line ) != :END
+    while line_do(@program.next_line) != :END
     end
   end
 
@@ -62,7 +62,7 @@ class Parser
   # Do one line of BASIC
   #--------------------------------------------------------------------------
 
-  def line_do( line = nil )
+  def line_do(line = nil)
     unless line.nil?
       @line = line
       @lexer.from line
@@ -74,8 +74,8 @@ class Parser
     statement = @lexer.next if statement.type == :integer   # Line number, skip it
     type      = statement.type
 
-    if STATEMENTS.key?( type )
-      send( STATEMENTS[type] )
+    if STATEMENTS.key?(type)
+      send(STATEMENTS[type])
     else
       case type
       when :eos, :NEXT, :RETURN, :END then return type
@@ -111,7 +111,7 @@ class Parser
   # Added a special variable (TI) which gives the current epoch.
   #--------------------------------------------------------------------------
 
-  def value_of( name )
+  def value_of(name)
     return Time.now.to_f if name == 'TI'
     @variables[name]
   end
@@ -131,7 +131,7 @@ class Parser
   # Perform an assignment, optionally led in by LET.
   #--------------------------------------------------------------------------
 
-  def do_assignment( leadin )
+  def do_assignment(leadin)
     ident = leadin.type == :LET ? (expect [:ident]).value : leadin.value
 
     expect [:assign]
@@ -155,17 +155,17 @@ class Parser
       t = @lexer.peek_next_type
       break if t == :eol || t == :eos
 
-      last_item = print_element( t )
+      last_item = print_element(t)
     end
 
     puts if last_item.nil? || last_item.type != :separator
   end
 
-  def print_element( type )
+  def print_element(type)
     if [:string, :separator].include? type
       item = @lexer.next
     else
-      item = Token.new( :float, @expression.evaluate )
+      item = Token.new(:float, @expression.evaluate)
     end
 
     print_item item
@@ -184,7 +184,7 @@ class Parser
     val = $stdin.gets.chomp
 
     # All digits (and decimal point)
-    val = (val.include?( '.' ) ? val.to_f : val.to_i) if val =~ /^(\d|\.)+$/
+    val = (val.include?('.') ? val.to_f : val.to_i) if val =~ /^(\d|\.)+$/
 
     @variables[item.value] = val
   end
@@ -250,13 +250,13 @@ class Parser
     # Top of the FOR loop
 
     loop do
-      break if step < 0 && value_of( var ) < finish # Counting down
-      break if step > 0 && value_of( var ) > finish # Counting up
+      break if step < 0 && value_of(var) < finish # Counting down
+      break if step > 0 && value_of(var) > finish # Counting up
 
       # Go round the loop until we reach our NEXT or END, or fall out of
       # the bottom of the program, which is bad m'kay.
 
-      break if do_for_loop( place_line ) == :END
+      break if do_for_loop(place_line) == :END
 
       # We got NEXT, so go around again, as long as the (optional) variable
       # matches, if specified
@@ -268,7 +268,7 @@ class Parser
   end
 
   def collect_for_parms             # FOR ...
-    var, step = expect( [:ident] ).value, 1  # var ...
+    var, step = expect([:ident]).value, 1  # var ...
     expect [:assign]                # = ...
     start  = @expression.evaluate   # 1 ...
     expect [:TO]                    # TO ...
@@ -282,7 +282,7 @@ class Parser
     [var, start, finish, step]
   end
 
-  def do_for_loop( place_line )
+  def do_for_loop(place_line)
     # Return to the top of the loop
 
     @program.cur_line = place_line
@@ -347,7 +347,7 @@ class Parser
 
     cmp, lhside, rhside = collect_inequality
 
-    truth = do_inequality( cmp, lhside, rhside )
+    truth = do_inequality(cmp, lhside, rhside)
 
     negate ? !truth : truth
   end
@@ -360,7 +360,7 @@ class Parser
     [cmp, lhside, rhside]
   end
 
-  def do_inequality( cmp, lhside, rhside )
+  def do_inequality(cmp, lhside, rhside)
     case cmp.type
     when  :cmp_eq, :assign  then  (lhside == rhside)
     when  :cmp_ne           then  (lhside != rhside)
@@ -375,10 +375,10 @@ class Parser
   # Print one item (string, number, variable, separator)
   #--------------------------------------------------------------------------
 
-  def print_item( item )
+  def print_item(item)
     case item.type
     when :string, :float, :integer  then print item.value
-    when :ident                     then print value_of( item.value )
+    when :ident                     then print value_of(item.value)
     when :separator                 then print "\t" if item.value == ','
     end
   end
@@ -388,15 +388,15 @@ class Parser
   # throwing an exception if not
   #--------------------------------------------------------------------------
 
-  def expect( options )
-    @lexer.expect( options )
+  def expect(options)
+    @lexer.expect(options)
   end
 end
 
 if __FILE__ == $PROGRAM_NAME && ARGV.count != 0
   p = Parser.new
 
-  loaded = File.read( ARGV[0] )
+  loaded = File.read(ARGV[0])
 
   begin
     p.do_program loaded

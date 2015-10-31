@@ -3,7 +3,6 @@ require_relative '../parser.rb'
 require 'spec_helper.rb'
 
 describe Parser do
-
   before :all do
     @parser = Parser.new
   end
@@ -28,7 +27,7 @@ END
 )
       end
 
-      expect( output ).to eq "1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, \n" \
+      expect(output).to eq "1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, \n" \
         "233, 377, 610, 987, 1597, 2584, 4181, 6765, 10946, 17711, \n"
     end
   end
@@ -47,7 +46,7 @@ END
 )
       end
 
-      expect( output ).to eq "LINE 10\nLINE 40\n"
+      expect(output).to eq "LINE 10\nLINE 40\n"
     end
   end
 
@@ -66,7 +65,8 @@ PRINT "PAST DATA"
 )
       end
 
-      expect( output ).to eq "10, 20, 30, 35, 40, 50, 55, 60, 70, 80, \nPAST DATA\n"
+      expect(output).to eq \
+        "10, 20, 30, 35, 40, 50, 55, 60, 70, 80, \nPAST DATA\n"
     end
   end
 
@@ -90,7 +90,8 @@ PRINT "PAST DATA"
 )
       end
 
-      expect(output).to eq "10, 20, 30, 35, 40, \n10, 20, 30, 35, 40, \nPAST DATA\n"
+      expect(output).to eq \
+        "10, 20, 30, 35, 40, \n10, 20, 30, 35, 40, \nPAST DATA\n"
     end
   end
 
@@ -105,7 +106,7 @@ PRINT "PAST DATA"
 )
       end
 
-      expect( output ).to eq "LINE 10\nLINE 40\n"
+      expect(output).to eq "LINE 10\nLINE 40\n"
     end
   end
 
@@ -122,7 +123,7 @@ PRINT "PAST DATA"
 )
       end
 
-      expect( output ).to eq "LINE 10\nLINE 40\nLINE 30\n"
+      expect(output).to eq "LINE 10\nLINE 40\nLINE 30\n"
     end
   end
 end
