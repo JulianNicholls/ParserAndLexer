@@ -241,12 +241,12 @@ describe Parser do
   describe 'Exceptions' do
     it 'should be thrown for a missing right bracket' do
       @parser.feed_expression '10 *(7+8'
-      expect { @parser.expression }.to raise_error
+      expect { @parser.expression }.to raise_error StandardError
     end
 
     it 'should be thrown for a completely illegal expression' do
       @parser.feed_expression "10 + 'str'"
-      expect { @parser.expression }.to raise_error
+      expect { @parser.expression }.to raise_error StandardError
     end
   end
 

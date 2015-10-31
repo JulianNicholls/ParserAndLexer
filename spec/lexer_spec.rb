@@ -15,7 +15,7 @@ describe Lexer do
 
   describe 'Emptyness' do
     it 'should not be allowed' do
-      expect { @lexer.next }.to raise_error
+      expect { @lexer.next }.to raise_error StandardError
     end
   end
 
@@ -39,7 +39,7 @@ describe Lexer do
 
     it 'should raise an exception for an unterminated string' do
       @lexer.from "'sq string"
-      expect { @lexer.next }.to raise_exception
+      expect { @lexer.next }.to raise_exception StandardError
     end
   end
 
@@ -62,7 +62,7 @@ describe Lexer do
 
     it 'should raise an exception for a bad float' do
       @lexer.from '1.23.45'   # Whoops! two decimal points
-      expect { @lexer.next }.to raise_error
+      expect { @lexer.next }.to raise_error StandardError
     end
   end
 

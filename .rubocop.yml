@@ -1,11 +1,3 @@
-SpaceInsideParens:
-    Enabled: false
-
-LineLength:
-    Max: 85
-
 AllCops:
   Exclude:
     - study/**
-    - line_parser.rb
-

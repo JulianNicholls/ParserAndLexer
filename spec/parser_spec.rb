@@ -14,11 +14,11 @@ describe Parser do
 
   describe 'Emptyness' do
     it 'should not be allowed in .do_program' do
-      expect { @parser.do_program '' }.to raise_error
+      expect { @parser.do_program '' }.to raise_error StandardError
     end
 
     it 'should not allow nil in .do_program' do
-      expect { @parser.do_program nil }.to raise_error
+      expect { @parser.do_program nil }.to raise_error StandardError
     end
 
     it 'should return 0 for an unused variable' do
@@ -270,23 +270,23 @@ describe Parser do
 
   describe 'Malformed lines' do
     it 'should raise an error for reserved word used as variable' do
-      expect { @parser.line_do 'LET INPUT = 1' }.to raise_error
+      expect { @parser.line_do 'LET INPUT = 1' }.to raise_error StandardError
     end
 
     it 'should raise an error for INPUT without a variable' do
       expect do
         capture_stdout { @parser.line_do "INPUT 'Prompt';" }
-      end.to raise_error
+      end.to raise_error StandardError
     end
 
     it 'should raise an error for GOTO with a line number that does not exist' do
       expect do
         @parser.do_program "GOTO 20\n30 REM OOPS\n"
-      end.to raise_error
+      end.to raise_error StandardError
     end
 
     it 'should reject STEP 0 (unlikely, but there you go)' do
-      expect { @parser.line_do 'FOR I = 1 TO 10 STEP 0' }.to raise_error
+      expect { @parser.line_do 'FOR I = 1 TO 10 STEP 0' }.to raise_error StandardError
     end
   end
 end
