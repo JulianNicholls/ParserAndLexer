@@ -11,12 +11,12 @@ describe Parser do
     it 'should understand a whole program' do
       output = capture_stdout do
         @parser.do_program %(
-REM *** THIRD PROGRAM - FIBONACCI 20
+REM *** THIRD PROGRAM - FIBONACCI 20 ***
 REM
 A = 1
 B = 1
 PRINT "1, 1, ";
-FOR X = 1 TO 20
+666 FOR X = 1 TO 20
  C = B
  B = B + A
  A = C
@@ -57,7 +57,7 @@ END
 FOR I = 1 TO 10
   READ J
   PRINT J;", ";
-NEXT
+476 NEXT
 PRINT
 DATA 10, 20, 30, 35, 40
 DATA 50, 55, 60, 70, 80
@@ -78,7 +78,7 @@ FOR I = 1 TO 5
   READ J
   PRINT J;", ";
 NEXT
-PRINT
+123 PRINT
 RESTORE
 FOR I = 1 TO 5
   READ J

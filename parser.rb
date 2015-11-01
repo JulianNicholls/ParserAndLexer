@@ -23,6 +23,8 @@ class Parser
     :cmp_lt, :cmp_lte
   ]
 
+  NUMBER_REGEX = /^(\d|\.)+$/
+
   #--------------------------------------------------------------------------
   # Initialise, potentially with a different lexer than the default
   #--------------------------------------------------------------------------
@@ -53,7 +55,7 @@ class Parser
   #--------------------------------------------------------------------------
 
   def do_program(program_text)
-    fail 'empty program specified' if program_text.nil? || program_text.empty?
+    fail 'empty program specified' unless program_text && !program_text.empty?
 
     reset_variables
 
@@ -70,15 +72,9 @@ class Parser
   #--------------------------------------------------------------------------
 
   def line_do(line = nil)
-    unless line.nil?
-      @line = line
-      @lexer.from line
-    end
+    load_from line
 
-    fail 'No input specified' if @line.nil?
-
-    statement = @lexer.next
-    statement = @lexer.next if statement.type == :integer # Skip line number
+    statement = @lexer.next_skip_line_number
     type      = statement.type
 
     if STATEMENTS.key?(type)
@@ -125,6 +121,13 @@ class Parser
 
   private
 
+  def load_from(line)
+    if line
+      @line = line
+      @lexer.from line
+    end
+  end
+
   #--------------------------------------------------------------------------
   # Temporary function to ignore lines not understood. There's not much to
   # finish now.
@@ -146,13 +149,12 @@ class Parser
     @variables[ident] = if @lexer.peek_next_type == :string
                           @lexer.next.value
                         else
-                          @expression.evaluate
+                          expression_value
                         end
   end
 
   #--------------------------------------------------------------------------
-  # Do a PRINT. Now recognises expressions, rather than expecting simple
-  # values.
+  # Do a PRINT.
   #--------------------------------------------------------------------------
 
   def do_print
@@ -160,7 +162,7 @@ class Parser
 
     loop do
       type = @lexer.peek_next_type
-      break if type == :eol || type == :eos
+      break if [:eol, :eos].include? type
 
       last_item = print_element(type)
     end
@@ -172,7 +174,7 @@ class Parser
     if [:string, :separator].include? type
       item = @lexer.next
     else
-      item = Token.new(:float, @expression.evaluate)
+      item = Token.new(:float, expression_value)
     end
 
     print_item item
@@ -185,24 +187,29 @@ class Parser
   # input is all digits, with an optional decimal point.
   #--------------------------------------------------------------------------
 
+  # :reek:FeatureEnvy - val is accessed a lot
   def do_input
     prompted, item = input_prompt
     print '? ' unless prompted
     val = $stdin.gets.chomp
 
     # All digits (and decimal point)
-    val = (val.include?('.') ? val.to_f : val.to_i) if val =~ /^(\d|\.)+$/
+    val = (val.include?('.') ? val.to_f : val.to_i) if val =~ NUMBER_REGEX
 
     @variables[item.value] = val
   end
 
   def input_prompt
-    prompted, item = false, nil
+    prompted = false
+    item     = nil
 
     loop do
       item = expect [:string, :separator, :ident, :eos]
-      break if item.type == :ident
-      fail 'No variable specified for INPUT' if item.type == :eos
+      type = item.type
+
+      break if type == :ident
+
+      fail 'No variable specified for INPUT' if type == :eos
 
       prompted = true
       print_item item
@@ -217,23 +224,23 @@ class Parser
   #--------------------------------------------------------------------------
 
   def do_conditional
-    dc1 = inequality
+    cond = inequality
 
     loop do
-      t = @lexer.peek_next_type
+      type = @lexer.peek_next_type
 
-      break unless [:AND, :OR].include? t
+      break unless [:AND, :OR].include? type
       @lexer.skip
 
       # The rhs has to be evaluated here because of short-circuiting
 
       rhs = inequality
 
-      dc1 &&= rhs if t == :AND
-      dc1 ||= rhs if t == :OR
+      cond &&= rhs if type == :AND
+      cond ||= rhs if type == :OR
     end
 
-    return unless dc1
+    return unless cond
 
     expect [:THEN]
     line_do
@@ -246,8 +253,6 @@ class Parser
   def do_for
     var, start, finish, step = collect_for_parms
 
-    fail "STEP 0 IS INVALID in #{@str}" if step == 0
-
     # Mark our place in the program because we'll need to return here at the
     # top of each loop
 
@@ -257,8 +262,10 @@ class Parser
     # Top of the FOR loop
 
     loop do
-      break if step < 0 && value_of(var) < finish # Counting down
-      break if step > 0 && value_of(var) > finish # Counting up
+      val = value_of(var)
+
+      break if step < 0 && val < finish # Counting down
+      break if step > 0 && val > finish # Counting up
 
       # Go round the loop until we reach our NEXT or END, or fall out of
       # the bottom of the program, which is bad m'kay.
@@ -277,14 +284,16 @@ class Parser
   def collect_for_parms # FOR ...
     var, step = expect([:ident]).value, 1 # var ...
     expect [:assign]                # = ...
-    start  = @expression.evaluate   # 1 ...
+    start  = expression_value       # 1 ...
     expect [:TO]                    # TO ...
-    finish = @expression.evaluate   # 10 ...
+    finish = expression_value       # 10 ...
 
     if @lexer.peek_next_type == :STEP # STEP ...
       @lexer.skip
-      step = @expression.evaluate # 2
+      step = expression_value # 2
     end
+
+    fail "STEP 0 IS INVALID in #{@str}" if step == 0
 
     [var, start, finish, step]
   end
@@ -296,7 +305,7 @@ class Parser
 
     ret = nil
 
-    until ret == :eos || ret == :NEXT || ret == :END
+    until [:eos, :NEXT, :END].include? ret
       ret  = line_do @program.next_line
     end
 
@@ -317,7 +326,7 @@ class Parser
 
     loop do
       ret = line_do @program.next_line
-      break if ret == :eos || ret == :RETURN || ret == :END
+      break if [:eos, :RETURN, :END].include? ret
     end
 
     @program.do_return(place_line) if ret == :RETURN
@@ -351,39 +360,30 @@ class Parser
 
     @lexer.skip if negate
 
-    truth = do_inequality(*collect_inequality)
+    truth = Inequality.evaluate(*collect_inequality)
 
     negate ? !truth : truth
   end
 
   def collect_inequality
-    lhside = @expression.evaluate
+    lhside = expression_value
     cmp    = expect INEQUALITY_SYMBOLS
-    rhside = @expression.evaluate
 
-    [cmp, lhside, rhside]
+    [cmp, lhside, expression_value]
   end
 
-  def do_inequality(cmp, lhside, rhside)
-    case cmp.type
-    when  :cmp_eq, :assign  then  (lhside == rhside)
-    when  :cmp_ne           then  (lhside != rhside)
-    when  :cmp_gt           then  (lhside > rhside)
-    when  :cmp_gte          then  (lhside >= rhside)
-    when  :cmp_lt           then  (lhside < rhside)
-    when  :cmp_lte          then  (lhside <= rhside)
-    end
-  end
 
   #--------------------------------------------------------------------------
   # Print one item (string, number, variable, separator)
   #--------------------------------------------------------------------------
 
   def print_item(item)
+    content = item.value
+
     case item.type
-    when :string, :float, :integer  then print item.value
-    when :ident                     then print value_of(item.value)
-    when :separator                 then print "\t" if item.value == ','
+    when :string, :float, :integer  then print content
+    when :ident                     then print value_of(content)
+    when :separator                 then print "\t" if content == ','
     end
   end
 
@@ -394,6 +394,10 @@ class Parser
 
   def expect(options)
     @lexer.expect(options)
+  end
+
+  def expression_value
+    @expression.evaluate
   end
 end
 
@@ -407,5 +411,4 @@ if __FILE__ == $PROGRAM_NAME && ARGV.count != 0
   rescue ParserError => e
     puts "SYNTAX ERROR: #{e}"
   end
-
 end
