@@ -38,21 +38,6 @@ class Lexer
     READ DATA RESTORE AND OR NOT
   )
 
-  PATTERNS = {
-    /\A['"]/            => :collect_string,
-    /\A[\d\.]+/         => :collect_number,
-    /\A==?/             => -> (mat) { Token.new(mat.to_s == '=' ? :assign : :cmp_eq) },
-    /\A[!<>]=?/         => -> (mat) { Token.new CMPS[mat.to_s] },
-    %r{\A[\+\-\*/%\^]}  => :collect_operator,
-    /\A[\r\n]+/         => -> (_ma) { Token.new(:eol) },
-    /\A[\(\)]/          => -> (mat) { Token.new(mat.to_s == '(' ? :br_open : :br_close) },
-    /\A[\[\]]/          => -> (mat) { Token.new(mat.to_s == '[' ? :sqbr_open : :sqbr_close) },
-    /\A:/               => -> (_ma) { Token.new(:colon) },
-    /\A[,;]/            => -> (mat) { Token.new(:separator, mat.to_s) },
-
-    /\A\w+/             => :collect_ident # Pretty much anything else...
-  }
-
   CMPS = {
     '!=' => :cmp_ne,
     '<'  => :cmp_lt,
@@ -68,6 +53,21 @@ class Lexer
     '/' => :divide,
     '%' => :modulo,
     '^' => :exponent
+  }
+
+  PATTERNS = {
+    /\A['"]/            => :collect_string,
+    /\A[\d\.]+/         => :collect_number,
+    /\A==?/             => -> (mat) { Token.new(mat == '=' ? :assign : :cmp_eq) },
+    /\A[!<>]=?/         => -> (mat) { Token.new CMPS[mat] },
+    %r{\A[\+\-\*/%\^]}  => :collect_operator,
+    /\A[\r\n]+/         => -> (_ma) { Token.new(:eol) },
+    /\A[\(\)]/          => -> (mat) { Token.new(mat == '(' ? :br_open : :br_close) },
+    /\A[\[\]]/          => -> (mat) { Token.new(mat == '[' ? :sqbr_open : :sqbr_close) },
+    /\A:/               => -> (_ma) { Token.new(:colon) },
+    /\A[,;]/            => -> (mat) { Token.new(:separator, mat) },
+
+    /\A\w+/             => ->(mat) { @reserved.include?(mat) ? Token.new(mat.to_sym) : Token.new(:ident, mat) }
   }
 
   #----------------------------------------------------------------------------
@@ -143,14 +143,10 @@ class Lexer
     PATTERNS.each do |re, func|
       re.match(@str) do |mat|
         @last_re = re # This is what will be removed
+        mat = mat.to_s
         return func.is_a?(Symbol) ? send(func, mat) : instance_exec(mat, &func)
       end
     end
-
-    # No match, more or less impossible since an ident match will mop up
-    # almost anything
-
-    fail "Unrecognised: '#{@str}'"
   end
 
   private
@@ -161,11 +157,9 @@ class Lexer
   #----------------------------------------------------------------------------
 
   def collect_operator(mat)
-    text = mat.to_s
+    return collect_negative_number if mat == '-' && (@str[1] =~ /\d/)
 
-    return collect_negative_number if text == '-' && (peek =~ /\d/)
-
-    Token.new OPERATORS[text]
+    Token.new OPERATORS[mat]
   end
 
   #----------------------------------------------------------------------------
@@ -174,37 +168,25 @@ class Lexer
 
   def collect_negative_number
     @last_re = /\A-[\d\.]+/
-    collect_number(@last_re.match @str)
+    collect_number(@last_re.match(@str).to_s)
   end
 
   # :reek:FeatureEnvy - str is just a string
   def collect_number(mat)
-    str  = mat.to_s
-    is_f = str.include? '.'
+    is_f = mat.include? '.'
 
     # Throw a fit if there's more than one decimal point
-    fail "Invalid number encountered: #{str}" if str =~ /.*\..*\./
+    fail "Invalid number encountered: #{str}" if mat =~ /.*\..*\./
 
-    is_f ? Token.new(:float, str.to_f) : Token.new(:integer, str.to_i)
-  end
-
-  #----------------------------------------------------------------------------
-  # Match a variable identifier, upper and lower case, underscores and numbers
-  #----------------------------------------------------------------------------
-
-  def collect_ident(mat)
-    str = mat.to_s
-
-    @reserved.include?(str) ? Token.new(str.to_sym) : Token.new(:ident, str)
+    is_f ? Token.new(:float, mat.to_f) : Token.new(:integer, mat.to_i)
   end
 
   #----------------------------------------------------------------------------
   # Match a string delimited by either ' or ".
   #----------------------------------------------------------------------------
 
-  def collect_string(mat)
-    delim     = mat.to_s
-    @last_re  = %r{#{delim}([^#{delim}]+)#{delim}}
+  def collect_string(delim)
+    @last_re  = /#{delim}([^#{delim}]+)#{delim}/
     content   = @last_re.match @str
 
     fail "Unterminated string encountered: #{@str}" unless content
@@ -238,23 +220,6 @@ class Lexer
 
   def skip_space
     @str.slice!(/\A[ \t]+/); # Not \s, we want to capture EOL characters
-    eos? ? :eos : :ok
-  end
-
-  #----------------------------------------------------------------------------
-  # Peek at the character after the current one, so that we can see if there is
-  # a digit following a minus sign, for example
-  #----------------------------------------------------------------------------
-
-  def peek
-    @str[1]
-  end
-
-  #----------------------------------------------------------------------------
-  # Return whether the string is exhausted
-  #----------------------------------------------------------------------------
-
-  def eos?
-    @str.empty?
+    @str.empty? ? :eos : :ok
   end
 end

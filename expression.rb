@@ -131,18 +131,3 @@ class ArithmeticExpression
     @parent.value_of name
   end
 end
-
-# Inequality evaluation
-
-class Inequality
-  def self.evaluate(cmp, lhside, rhside)
-    case cmp.type
-    when  :cmp_eq, :assign  then  (lhside == rhside)
-    when  :cmp_ne           then  (lhside != rhside)
-    when  :cmp_gt           then  (lhside > rhside)
-    when  :cmp_gte          then  (lhside >= rhside)
-    when  :cmp_lt           then  (lhside < rhside)
-    when  :cmp_lte          then  (lhside <= rhside)
-    end
-  end
-end

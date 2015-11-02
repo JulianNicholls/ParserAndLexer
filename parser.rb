@@ -23,6 +23,16 @@ class Parser
     :cmp_lt, :cmp_lte
   ]
 
+  COMPARISONS = {
+    cmp_eq:   -> (lhs, rhs) { lhs == rhs },
+    assign:   -> (lhs, rhs) { lhs == rhs },
+    cmp_ne:   -> (lhs, rhs) { lhs != rhs },
+    cmp_gt:   -> (lhs, rhs) { lhs > rhs },
+    cmp_gte:  -> (lhs, rhs) { lhs >= rhs },
+    cmp_lt:   -> (lhs, rhs) { lhs < rhs },
+    cmp_lte:  -> (lhs, rhs) { lhs <= rhs }
+  }
+
   NUMBER_REGEX = /^(\d|\.)+$/
 
   #--------------------------------------------------------------------------
@@ -116,16 +126,17 @@ class Parser
 
   def value_of(name)
     return Time.now.to_f if name == 'TI'
+
     @variables[name]
   end
 
   private
 
   def load_from(line)
-    if line
-      @line = line
-      @lexer.from line
-    end
+    return unless line
+
+    @line = line
+    @lexer.from line
   end
 
   #--------------------------------------------------------------------------
@@ -282,11 +293,12 @@ class Parser
   end
 
   def collect_for_parms # FOR ...
-    var, step = expect([:ident]).value, 1 # var ...
-    expect [:assign]                # = ...
-    start  = expression_value       # 1 ...
-    expect [:TO]                    # TO ...
-    finish = expression_value       # 10 ...
+    step = 1
+    var = expect([:ident]).value  # var ...
+    expect [:assign]              # = ...
+    start  = expression_value     # 1 ...
+    expect [:TO]                  # TO ...
+    finish = expression_value     # 10 ...
 
     if @lexer.peek_next_type == :STEP # STEP ...
       @lexer.skip
@@ -299,15 +311,9 @@ class Parser
   end
 
   def do_for_loop(place_line)
-    # Return to the top of the loop
+    @program.do_return place_line # Return to the top of the loop
 
-    @program.do_return place_line
-
-    ret = nil
-
-    until [:eos, :NEXT, :END].include? ret
-      ret  = line_do @program.next_line
-    end
+    ret  = line_do @program.next_line until [:eos, :NEXT, :END].include? ret
 
     fail 'Missing NEXT' unless ret == :NEXT
 
@@ -360,7 +366,8 @@ class Parser
 
     @lexer.skip if negate
 
-    truth = Inequality.evaluate(*collect_inequality)
+    tok, lhs, rhs = collect_inequality
+    truth = COMPARISONS[tok.type].call(lhs, rhs)
 
     negate ? !truth : truth
   end
@@ -371,7 +378,6 @@ class Parser
 
     [cmp, lhside, expression_value]
   end
-
 
   #--------------------------------------------------------------------------
   # Print one item (string, number, variable, separator)

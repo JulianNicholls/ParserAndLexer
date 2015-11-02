@@ -25,6 +25,9 @@ describe Parser do
 
       @parser.feed_inequality '1 = A1'
       expect(@parser.inequality).to eq false
+
+      @parser.feed_inequality 'A3 = 2'
+      expect(@parser.inequality).to eq false
     end
 
     it 'should evaluate == as equals' do
@@ -32,6 +35,9 @@ describe Parser do
       expect(@parser.inequality).to eq true
 
       @parser.feed_inequality '1 == A1'
+      expect(@parser.inequality).to eq false
+
+      @parser.feed_inequality 'A2 == 3'
       expect(@parser.inequality).to eq false
     end
 

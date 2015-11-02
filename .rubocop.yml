@@ -1,5 +1,5 @@
 AllCops:
   Exclude:
-    - study/**
+    - studies/**
     - line_parser.rb
 
