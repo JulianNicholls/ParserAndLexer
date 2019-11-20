@@ -3,7 +3,7 @@ REM
 A = 1
 B = 1
 PRINT "1, 1, ";
-FOR X = 1 TO 200
+FOR X = 1 TO 300
  C = B
  B = B + A
  A = C
