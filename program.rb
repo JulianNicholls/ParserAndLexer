@@ -68,7 +68,7 @@ class Program
     fail "LINE NUMBER #{line_number} not found" unless @cur_line
   end
 
-  # RETURN from a GOSUB or return to thetop of a for loop.
+  # RETURN from a GOSUB or return to the top of a for loop.
   def do_return(dest_line)
     @cur_line = dest_line
   end
